@@ -1,0 +1,76 @@
+product_id,product_name,brand_name,generic_name,strength,form,price_inr
+1,Dolo 650 Tablet,Dolo,Paracetamol,650mg,Tablet,3.50
+2,Dolo 500 Tablet,Dolo,Paracetamol,500mg,Tablet,2.50
+3,Kalpol 650 Tablet,Kalpol,Paracetamol,650mg,Tablet,3.20
+4,Kalpol 500 Tablet,Kalpol,Paracetamol,500mg,Tablet,2.20
+5,Crocin 650 Tablet,Crocin,Paracetamol,650mg,Tablet,4.00
+6,Crocin 500 Tablet,Crocin,Paracetamol,500mg,Tablet,3.00
+7,Pacimol 650 Tablet,Pacimol,Paracetamol,650mg,Tablet,3.00
+8,Pyrigesic 650 Tablet,Pyrigesic,Paracetamol,650mg,Tablet,3.00
+9,Cipmol 650 Tablet,Cipmol,Paracetamol,650mg,Tablet,2.80
+10,Azee 500 Tablet,Azee,Azithromycin,500mg,Tablet,22.00
+11,Azee 250 Tablet,Azee,Azithromycin,250mg,Tablet,12.00
+12,Azithral 500 Tablet,Azithral,Azithromycin,500mg,Tablet,21.00
+13,Azithral 250 Tablet,Azithral,Azithromycin,250mg,Tablet,11.50
+14,Pan 40 Tablet,Pan,Pantoprazole,40mg,Tablet,8.00
+15,Pantocid 40 Tablet,Pantocid,Pantoprazole,40mg,Tablet,8.50
+16,Pantosec 40 Tablet,Pantosec,Pantoprazole,40mg,Tablet,7.50
+17,Pantakind 40 Tablet,Pantakind,Pantoprazole,40mg,Tablet,7.00
+18,Pansec 40 Tablet,Pansec,Pantoprazole,40mg,Tablet,8.00
+19,Pan D Capsule,Pan D,Pantoprazole,40mg,Capsule,12.00
+20,Zifi 200 Tablet,Zifi,Cefixime,200mg,Tablet,18.00
+21,Zifi 100 DT,Zifi,Cefixime,100mg,Tablet,10.00
+22,Taxim O 200 Tablet,Taxim O,Cefixime,200mg,Tablet,19.00
+23,Taxim O 100 Tablet,Taxim O,Cefixime,100mg,Tablet,10.50
+24,Cefolac 200 Tablet,Cefolac,Cefixime,200mg,Tablet,17.00
+25,Monocef 1g Injection,Monocef,Ceftriaxone,1g,Injection,65.00
+26,Monocef 500 Injection,Monocef,Ceftriaxone,500mg,Injection,40.00
+27,Augmentin 625 Tablet,Augmentin,Amoxicillin+Clavulanic Acid,625mg,Tablet,45.00
+28,Augmentin 1g Tablet,Augmentin,Amoxicillin+Clavulanic Acid,1g,Tablet,75.00
+29,Moxikind CV 625 Tablet,Moxikind CV,Amoxicillin+Clavulanic Acid,625mg,Tablet,38.00
+30,Clampkid 625 Tablet,Clampkid,Amoxicillin+Clavulanic Acid,625mg,Tablet,35.00
+31,Metrogyl 400 Tablet,Metrogyl,Metronidazole,400mg,Tablet,2.50
+32,Flagyl 400 Tablet,Flagyl,Metronidazole,400mg,Tablet,4.00
+33,Glycomet 500 Tablet,Glycomet,Metformin,500mg,Tablet,1.50
+34,Glycomet 850 Tablet,Glycomet,Metformin,850mg,Tablet,2.50
+35,Glycomet GP1 Tablet,Glycomet GP1,Metformin+Glimepiride,NA,Tablet,6.00
+36,Glycomet GP2 Tablet,Glycomet GP2,Metformin+Glimepiride,NA,Tablet,8.50
+37,Galvus Met Tablet,Galvus Met,Vildagliptin+Metformin,NA,Tablet,22.00
+38,Amaryl 1 Tablet,Amaryl,Glimepiride,1mg,Tablet,8.00
+39,Amaryl 2 Tablet,Amaryl,Glimepiride,2mg,Tablet,14.00
+40,Telma 20 Tablet,Telma,Telmisartan,20mg,Tablet,6.00
+41,Telma 40 Tablet,Telma,Telmisartan,40mg,Tablet,10.00
+42,Telma 80 Tablet,Telma,Telmisartan,80mg,Tablet,18.00
+43,Telmikind 40 Tablet,Telmikind,Telmisartan,40mg,Tablet,9.00
+44,Olmezest 20 Tablet,Olmezest,Olmesartan,20mg,Tablet,8.00
+45,Olmezest 40 Tablet,Olmezest,Olmesartan,40mg,Tablet,14.00
+46,Atorva 10 Tablet,Atorva,Atorvastatin,10mg,Tablet,12.00
+47,Atorva 20 Tablet,Atorva,Atorvastatin,20mg,Tablet,20.00
+48,Atorlip 10 Tablet,Atorlip,Atorvastatin,10mg,Tablet,10.00
+49,Rozavel 10 Tablet,Rozavel,Rosuvastatin,10mg,Tablet,15.00
+50,Rozavel 20 Tablet,Rozavel,Rosuvastatin,20mg,Tablet,28.00
+51,Shelcal 500 Tablet,Shelcal,Calcium Carbonate,500mg,Tablet,7.00
+52,Becosules Capsule,Becosules,Vitamin B Complex,NA,Capsule,3.50
+53,Neurobion Forte Tablet,Neurobion Forte,Vitamin B Complex,NA,Tablet,4.50
+54,Zerodol P Tablet,Zerodol P,Aceclofenac+Paracetamol,NA,Tablet,6.00
+55,Movexx Tablet,Movexx,Aceclofenac+Paracetamol,NA,Tablet,5.50
+56,Ultracet Tablet,Ultracet,Tramadol+Paracetamol,NA,Tablet,12.00
+57,Digene Tablet,Digene,Antacid,NA,Tablet,3.00
+58,Gelusil Tablet,Gelusil,Antacid,NA,Tablet,3.00
+59,Sucral O Suspension,Sucral O,Sucralfate,NA,Suspension,140.00
+60,Levocet Tablet,Levocet,Levocetirizine,5mg,Tablet,3.50
+61,Montek LC Tablet,Montek LC,Montelukast+Levocetirizine,NA,Tablet,11.00
+62,Montair LC Tablet,Montair LC,Montelukast+Levocetirizine,NA,Tablet,10.00
+63,Allegra 120 Tablet,Allegra,Fexofenadine,120mg,Tablet,12.00
+64,Allegra 180 Tablet,Allegra,Fexofenadine,180mg,Tablet,18.00
+65,Betnesol Tablet,Betnesol,Betamethasone,0.5mg,Tablet,1.00
+66,Wysolone 10 Tablet,Wysolone,Prednisolone,10mg,Tablet,2.50
+67,Thyronorm 25 Tablet,Thyronorm,Thyroxine,25mcg,Tablet,3.00
+68,Thyronorm 50 Tablet,Thyronorm,Thyroxine,50mcg,Tablet,3.50
+69,Thyronorm 100 Tablet,Thyronorm,Thyroxine,100mcg,Tablet,4.50
+70,Evion 400 Capsule,Evion,Vitamin E,400mg,Capsule,4.00
+73,Enzoflam-P Tablet,Enzoflam-P,Diclofenac+Paracetamol,NA,Tablet,12.00
+74,Augmentin Duo 625 Tablet,Augmentin,Amoxicillin+Clavulanic Acid,625mg,Tablet,50.00
+75,Pan 40 Tablet,Pan,Pantoprazole,40mg,Tablet,8.00
+76,Hexigel Mouth Paint,Hexigel,Chlorhexidine Gluconate,1% w/w,Liquid,70.00
+77,Dolo 500 Tablet,Dolo,Paracetamol,500mg,Tablet,2.50

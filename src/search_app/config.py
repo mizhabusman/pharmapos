@@ -1,0 +1,1 @@
+DB_PATH = "pharmacy_inventory.db"
