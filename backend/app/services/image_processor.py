@@ -53,5 +53,4 @@ def optimize_for_upload(
         quality=jpeg_quality,
         optimize=True
     )
-
     return buffer.getvalue()

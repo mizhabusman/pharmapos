@@ -4,3 +4,5 @@ __pycache__/
 .streamlit/secrets.toml
 pharmacy_inventory.db
 output/
+.env
+backend/.env

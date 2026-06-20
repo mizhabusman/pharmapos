@@ -1,11 +1,18 @@
-from fastapi import FastAPI
+import os
+from dotenv import load_dotenv
+from fastapi import FastAPI, UploadFile
+
 from app.services.database_manager import fetch_raw_inventory
 from app.services.preprocessor import load_inventory, create_search_index
 from app.services.searcher import search_medicine
+from app.services.image_processor import optimize_for_upload
+from app.services.gemini_extractor import run_extraction
+
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = FastAPI()
 
-# Load inventory once when server starts (not on every request — faster)
 inventory = create_search_index(load_inventory())
 
 @app.get("/")
@@ -22,3 +29,10 @@ def search(query: str):
             for text, score, idx in results
         ]
     }
+
+@app.post("/extract")
+async def extract_prescription(file: UploadFile):
+    raw_bytes = await file.read()
+    compressed_bytes = optimize_for_upload(raw_bytes)
+    result = run_extraction(compressed_bytes, GEMINI_API_KEY)
+    return result
