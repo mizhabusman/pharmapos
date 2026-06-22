@@ -4,6 +4,8 @@ from fastapi import FastAPI, UploadFile
 from pydantic import BaseModel
 from typing import List
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.services.database_manager import (
     fetch_raw_inventory,
     get_medicine_by_item_code,
@@ -21,6 +23,13 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 inventory = create_search_index(load_inventory())
 
@@ -56,11 +65,15 @@ def search(query: str):
     return {
         "query": query,
         "results": [
-            {"matched_text": text, "score": score, "row_index": idx}
+            {
+                "matched_text": text,
+                "score": score,
+                "row_index": idx,
+                "item_code": int(inventory.iloc[idx]["item_code"])
+            }
             for text, score, idx in results
         ]
     }
-
 
 @app.post("/extract")
 async def extract_prescription(file: UploadFile):
