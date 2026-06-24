@@ -10,10 +10,11 @@ def run_extraction(image_bytes: bytes, api_key: str) -> dict:
         "gemini-2.5-flash",
         generation_config={"response_mime_type": "application/json"}
     )
+    
     full_prompt = PHARMACIST_EXTRACTION + """
-Return EXACTLY this JSON — no other text:
-{"patient_name": "string", "age": 0, "medicines": [{"name": "string", "suggested_qty": 1}]}
-"""
+    Return EXACTLY this JSON — no other text:
+    {"patient_name": "string", "age": 0, "gender": "string", "medicines": [{"name": "string", "suggested_qty": 1}]}
+    """
     picture = {"mime_type": "image/jpeg", "data": image_bytes}
     resp = model.generate_content([picture, full_prompt])
 

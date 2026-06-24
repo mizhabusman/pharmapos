@@ -6,6 +6,7 @@ Act as an expert pharmacy data entry specialist. Extract medications from the pr
 CRITICAL FALLBACK RULES:
 - If the image is NOT a prescription, is completely unreadable, or contains no medications, return an EMPTY list for 'medicines'. Do NOT invent or guess medications.
 - If you cannot determine the patient's name or age, return "Unknown" for name and 0 for age.
+- GENDER EXTRACTION: Look for gender markers (e.g., 'M', 'F', 'Male', 'Female'). If present, extract as "Male", "Female", or "Other". If not explicitly written, intelligently infer the gender from the patient's name. If completely unsure, return an empty string "".
 
 Follow these exact normalization rules for the drug name string:
 

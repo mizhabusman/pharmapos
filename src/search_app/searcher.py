@@ -183,8 +183,23 @@ def search_medicine(
 
     reranked.sort(key=lambda m: m[1], reverse=True)
 
-    return [
-        (text, round(score, 1), index)
-        for text, score, index in reranked[:limit]
-        if score >= min_score
-    ]
+    # ── FINAL OUTPUT: Map the index back to the clean inventory strings ────
+    final_results = []
+    for _, score, index in reranked[:limit]:
+        if score >= min_score:
+            # Look up the exact row in the DataFrame using the matching index
+            row = inventory.iloc[index]
+            
+            # Grab the clean names straight from the original data
+            clean_product = str(row.get("product_name", ""))
+            
+            # Safely get pack_name (pandas can return NaN, so we check for it)
+            raw_pack = row.get("pack_name")
+            clean_pack = str(raw_pack) if pd.notna(raw_pack) else ""
+            
+            # Combine them for the frontend
+            display_name = f"{clean_product} {clean_pack}".strip()
+            
+            final_results.append((display_name, round(score, 1), index))
+
+    return final_results
