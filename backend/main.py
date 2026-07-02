@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, HTTPException
 from pydantic import BaseModel
 from typing import List
 
@@ -79,8 +79,18 @@ def search(query: str):
 async def extract_prescription(file: UploadFile):
     raw_bytes = await file.read()
     compressed_bytes = optimize_for_upload(raw_bytes)
-    result = run_extraction(compressed_bytes, GEMINI_API_KEY)
-    return result
+
+    try:
+        result = run_extraction(compressed_bytes, GEMINI_API_KEY)
+        return result
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "message": "Prescription extraction failed",
+                "error": str(exc)
+            }
+        ) from exc
 
 
 @app.get("/billing")
