@@ -5,12 +5,20 @@ Run from the ``backend/`` directory:
     uvicorn app.main:app --reload
 """
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import CORS_ORIGINS
+from app.core.config import CORS_ORIGINS, DB_PATH
 from app.routers import billing, extraction, health, sales, search
 from app.services.preprocessor import create_search_index, load_inventory
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -25,7 +33,17 @@ def create_app() -> FastAPI:
 
     # Build the in-memory fuzzy-search index once at startup and share it
     # across requests via app.state (see routers/search.py).
-    app.state.inventory = create_search_index(load_inventory())
+    inventory = create_search_index(load_inventory())
+    app.state.inventory = inventory
+
+    if inventory.empty:
+        logger.warning(
+            "Inventory is EMPTY. Did you build the database? "
+            "Run `python scripts/db_setup.py`. Expected DB at: %s",
+            DB_PATH,
+        )
+    else:
+        logger.info("Loaded %d inventory items from %s", len(inventory), DB_PATH)
 
     app.include_router(health.router)
     app.include_router(search.router)

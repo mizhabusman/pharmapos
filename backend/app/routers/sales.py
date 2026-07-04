@@ -17,7 +17,7 @@ def confirm_sale(sale: SaleRequest):
     # Never trust client-supplied prices/totals — recompute every line item
     # and the grand total from the inventory's own price data.
     billing_items, grand_total, errors = build_authoritative_bill(
-        [item.dict() for item in sale.billing_items]
+        [item.model_dump() for item in sale.billing_items]
     )
     if errors:
         return {"success": False, "error": "Invalid items", "details": errors}

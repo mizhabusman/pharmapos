@@ -2,7 +2,7 @@
 billing.py — Convert a prescribed quantity into pack-based billing figures.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.services.billing_engine import calculate_pack_billing
 from app.services.database_manager import get_medicine_by_item_code
@@ -14,7 +14,10 @@ router = APIRouter(tags=["billing"])
 def get_billing(item_code: int, rx_qty: int):
     medicine = get_medicine_by_item_code(item_code)
     if not medicine:
-        return {"error": "Medicine not found"}
+        raise HTTPException(
+            status_code=404,
+            detail={"message": "Medicine not found", "item_code": item_code},
+        )
 
     result = calculate_pack_billing(
         rx_qty=rx_qty,

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 
-const API = 'http://localhost:8000'
+// API base URL — set VITE_API_URL in a .env file for production hosting.
+// Falls back to the local dev server. Trailing slashes are trimmed.
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '')
 
 const createEmptyRow = () => ({
   extracted: 'Manual Entry',
@@ -42,6 +44,7 @@ export default function App() {
   const [lastScanMetrics, setLastScanMetrics] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
+  const [errorMsg, setErrorMsg] = useState(null)
 
   const fileInputRef = useRef(null)
 
@@ -50,10 +53,11 @@ export default function App() {
     return () => clearInterval(timer)
   }, [])
 
-  // Rotate loading messages every 2 seconds while loading
+  // Rotate loading messages every 2 seconds while loading.
+  // (The index is reset to 0 in handleExtract when loading begins, so we
+  // don't call setState directly in the effect body.)
   useEffect(() => {
     if (!loading) return
-    setLoadingMsgIndex(0)
     const interval = setInterval(() => {
       setLoadingMsgIndex(prev => (prev + 1) % loadingMessages.length)
     }, 2000)
@@ -67,6 +71,7 @@ export default function App() {
     setImage(URL.createObjectURL(file))
     setCart([createEmptyRow()])
     setSaleResult(null)
+    setErrorMsg(null)
   }
 
   async function searchMedicine(name) {
@@ -128,14 +133,20 @@ export default function App() {
   async function handleExtract() {
     if (!imageFile) return
     setLoading(true)
+    setLoadingMsgIndex(0)
     setCart([])
     setSaleResult(null)
+    setErrorMsg(null)
 
     try {
       const formData = new FormData()
       formData.append('file', imageFile)
       const res = await fetch(`${API}/extract`, { method: 'POST', body: formData })
       const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.detail?.message || 'Prescription extraction failed')
+      }
 
       if (data.metrics) {
         setLastScanMetrics(data.metrics)
@@ -183,6 +194,7 @@ export default function App() {
       setCart(cartItems.length > 0 ? cartItems : [createEmptyRow()])
     } catch (err) {
       console.error('Extraction failed:', err)
+      setErrorMsg(err.message || 'Could not process the prescription. Please try another image.')
       setCart([createEmptyRow()])
     } finally {
       setLoading(false)
@@ -393,6 +405,7 @@ export default function App() {
     setPatientAge('')
     setPatientGender('')
     setLastScanMetrics(null)
+    setErrorMsg(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -429,6 +442,7 @@ export default function App() {
       setSaleResult(data)
     } catch (err) {
       console.error("Sale failed", err)
+      setErrorMsg('Network error — the sale could not be completed. Please try again.')
     }
   }
 
@@ -527,6 +541,23 @@ export default function App() {
 
         {/* RIGHT PANEL */}
         <div className="flex-1 p-8 relative flex flex-col overflow-hidden bg-[#FFF9F5]">
+
+          {/* ── ERROR BANNER ── */}
+          {errorMsg && (
+            <div className="mb-4 flex items-start gap-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl px-4 py-3 shadow-sm">
+              <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-sm font-semibold flex-1">{errorMsg}</p>
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="text-rose-400 hover:text-rose-600 transition-colors"
+                aria-label="Dismiss"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
 
           {/* ── AI LOADING PANEL ── */}
           {loading && (

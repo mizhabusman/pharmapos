@@ -23,6 +23,12 @@ def test_billing_uses_inventory_price(client):
     assert body["billing"]["line_total"] == 150.00
 
 
+def test_billing_unknown_item_returns_404(client):
+    r = client.get("/billing", params={"item_code": 999999, "rx_qty": 1})
+    assert r.status_code == 404
+    assert r.json()["detail"]["item_code"] == 999999
+
+
 def test_confirm_sale_enforces_server_price(client, db_conn):
     # Attempt to underpay: client claims line_total 0.01.
     payload = {

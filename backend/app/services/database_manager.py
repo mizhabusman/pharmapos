@@ -1,15 +1,18 @@
+import logging
 import sqlite3
 import pandas as pd
 from typing import List, Dict
 
 from app.core.config import DB_PATH
 
+logger = logging.getLogger(__name__)
+
 def fetch_raw_inventory() -> pd.DataFrame:
     try:
         with sqlite3.connect(DB_PATH) as conn:
             return pd.read_sql("SELECT * FROM inventory", conn)
     except Exception as e:
-        print(f"Database fetch failed: {e}")
+        logger.error("Database fetch failed: %s", e)
         return pd.DataFrame() # Returns an empty dataframe if the file is missing
     
 def get_medicine_by_item_code(item_code: int) -> dict:
@@ -38,7 +41,7 @@ def get_medicine_by_item_code(item_code: int) -> dict:
                 }
                 
     except Exception as e:
-        print(f"Failed to fetch medicine {item_code}: {e}")
+        logger.error("Failed to fetch medicine %s: %s", item_code, e)
         
     return {}
 
@@ -89,7 +92,7 @@ def validate_stock(billing_items: List[Dict]) -> List[Dict]:
                     })
                     
     except Exception as e:
-        print(f"Stock validation failed: {e}")
+        logger.error("Stock validation failed: %s", e)
         return [{"error": f"Database failure during validation: {e}"}]
         
     return insufficient_items
@@ -120,7 +123,7 @@ def deduct_stock(billing_items: List[Dict]) -> dict:
         return {"success": True, "message": "Stock updated successfully"}
         
     except Exception as e:
-        print(f"Stock deduction failed: {e}")
+        logger.error("Stock deduction failed: %s", e)
         return {"success": False, "message": f"Transaction failed: {str(e)}"}
     
 def save_bill(billing_json: dict) -> dict:
@@ -165,7 +168,7 @@ def save_bill(billing_json: dict) -> dict:
         return {"success": True, "bill_id": bill_id}
         
     except Exception as e:
-        print(f"Failed to save bill: {e}")
+        logger.error("Failed to save bill: %s", e)
         return {"success": False, "message": f"Failed to save ledger record: {str(e)}"}
     
 def initialize_database():
@@ -204,7 +207,7 @@ def initialize_database():
                 )
             """)
     except Exception as e:
-        print(f"CRITICAL: Failed to initialize database structure: {e}")
+        logger.error("CRITICAL: Failed to initialize database structure: %s", e)
 
 # ==========================================
 # AUTO-RUN ON STARTUP
