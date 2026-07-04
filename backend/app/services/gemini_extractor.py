@@ -1,6 +1,12 @@
 import json
 import google.generativeai as genai
 from app.services.prompts import PHARMACIST_EXTRACTION
+from app.core.config import (
+    GEMINI_MODEL,
+    GEMINI_INPUT_PRICE_PER_1M,
+    GEMINI_OUTPUT_PRICE_PER_1M,
+    INR_CONVERSION_RATE,
+)
 
 
 def run_extraction(image_bytes: bytes, api_key: str) -> dict:
@@ -11,7 +17,7 @@ def run_extraction(image_bytes: bytes, api_key: str) -> dict:
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            "gemini-2.5-flash",
+            GEMINI_MODEL,
             generation_config={"response_mime_type": "application/json"}
         )
 
@@ -27,12 +33,8 @@ def run_extraction(image_bytes: bytes, api_key: str) -> dict:
         output_tokens = metadata.candidates_token_count
         total_tokens = metadata.total_token_count
 
-        INPUT_PRICE_PER_1M = 0.075
-        OUTPUT_PRICE_PER_1M = 0.30
-        INR_CONVERSION_RATE = 83.5
-
-        input_cost = (input_tokens / 1_000_000) * INPUT_PRICE_PER_1M
-        output_cost = (output_tokens / 1_000_000) * OUTPUT_PRICE_PER_1M
+        input_cost = (input_tokens / 1_000_000) * GEMINI_INPUT_PRICE_PER_1M
+        output_cost = (output_tokens / 1_000_000) * GEMINI_OUTPUT_PRICE_PER_1M
         total_usd = input_cost + output_cost
         total_inr = total_usd * INR_CONVERSION_RATE
 

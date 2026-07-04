@@ -1,8 +1,16 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
-.streamlit/secrets.toml
-pharmacy_inventory.db
-output/
+
+# Environment / secrets
 .env
 backend/.env
+
+# SQLite database (generated from data/real_database.csv via
+# backend/scripts/db_setup.py — not source-controlled)
+*.db
+
+# Node / frontend build output
+node_modules/
+frontend/dist/

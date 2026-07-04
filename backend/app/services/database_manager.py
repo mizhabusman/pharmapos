@@ -2,7 +2,7 @@ import sqlite3
 import pandas as pd
 from typing import List, Dict
 
-from app.services.config import DB_PATH
+from app.core.config import DB_PATH
 
 def fetch_raw_inventory() -> pd.DataFrame:
     try:

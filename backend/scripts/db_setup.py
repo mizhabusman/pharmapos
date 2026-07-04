@@ -1,15 +1,31 @@
-import sqlite3
-import pandas as pd
-import os
+"""
+db_setup.py — Rebuild the SQLite inventory database from the source CSV.
 
-DB_PATH = "pharmacy_inventory.db"
-CSV_PATH = "data\\real_database.csv"
+Reads data/real_database.csv, (re)creates the `inventory` table, and ensures
+the `bills` / `bill_items` ledger tables exist.
+
+Run from anywhere:
+    python backend/scripts/db_setup.py
+"""
+
+import os
+import sqlite3
+import sys
+
+import pandas as pd
+
+# Make the `app` package importable when running this script directly.
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, BACKEND_DIR)
+
+from app.core.config import CSV_PATH, DB_PATH  # noqa: E402
+
 
 def rebuild_database():
     print(f"Reading data from {CSV_PATH}...")
-    
+
     if not os.path.exists(CSV_PATH):
-        print(f"❌ Error: '{CSV_PATH}' not found in the current folder.")
+        print(f"❌ Error: '{CSV_PATH}' not found.")
         return
 
     # 1. Load the CSV
@@ -23,15 +39,15 @@ def rebuild_database():
         "Units/Pack": "units_pack",
         "Pack Name": "pack_name",
         "MRP": "mrp",
-        "SOH In Packs": "stock"
+        "SOH In Packs": "stock",
     })
 
     print(f"Creating database '{DB_PATH}'...")
-    
+
     with sqlite3.connect(DB_PATH) as conn:
         # Enforce relational rules
         conn.execute("PRAGMA foreign_keys = ON")
-        
+
         # 3. Create the 'inventory' table from the dataframe
         df.to_sql("inventory", conn, if_exists="replace", index=False)
         print("✅ Successfully imported 'inventory' table.")
@@ -62,7 +78,8 @@ def rebuild_database():
         """)
         print("✅ Successfully created 'bill_items' table.")
 
-    print("\n🎉 Database rebuild is 100% complete! You can now run 'streamlit run app.py'.")
+    print("\n🎉 Database rebuild complete! Start the API with 'uvicorn app.main:app --reload'.")
+
 
 if __name__ == "__main__":
     rebuild_database()
