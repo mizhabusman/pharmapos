@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Login from './Login'
+import { LogoLockup } from './Logo'
 import { authFetch, getToken, logout } from './auth'
 
 // API base URL — set VITE_API_URL in a .env file for production hosting.
@@ -471,30 +472,20 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-[#F4F5F7] flex flex-col overflow-hidden font-sans text-slate-800">
+    <div className="h-screen bg-app-canvas flex flex-col overflow-hidden font-sans text-slate-800">
 
       {/* Header */}
-      <div className="bg-[#1E293B] px-8 py-4 flex items-center justify-between border-b border-[#334155] shadow-sm relative z-20">
-        <div className="flex items-center gap-3">
-          <div className="bg-[#2563EB] text-white p-2.5 rounded-xl shadow-md shadow-[#2563EB]/20">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-            </svg>
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-white tracking-tight leading-none mb-1">PharmaPOS</h1>
-            <p className="text-slate-300 text-[10px] font-bold uppercase tracking-widest">Prescription Intelligence</p>
-          </div>
-        </div>
+      <div className="bg-white px-8 py-4 flex items-center justify-between border-b border-slate-200 shadow-sm relative z-20">
+        <LogoLockup tone="dark" />
         <div className="flex items-center gap-5">
           <div className="text-right">
-            <p className="text-lg font-bold text-slate-100 tracking-wide">{timeString}</p>
-            <p className="text-sm font-medium text-slate-400">{dateString}</p>
+            <p className="text-lg font-bold text-slate-800 tracking-wide">{timeString}</p>
+            <p className="text-sm font-medium text-slate-500">{dateString}</p>
           </div>
           <button
             onClick={handleLogout}
             title="Log out"
-            className="flex items-center gap-2 text-slate-300 hover:text-white bg-[#0F172A] hover:bg-[#334155] border border-[#334155] rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -508,30 +499,46 @@ export default function App() {
       <div className="flex flex-1 gap-0 overflow-hidden">
 
         {/* LEFT PANEL */}
-        <div className="w-[20%] bg-[#1E293B] border-r border-[#334155] p-7 flex flex-col gap-6 overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(15,23,42,0.18)]">
-          <h2 className="font-bold text-slate-100 uppercase tracking-widest text-xs flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#2563EB] shadow-[0_0_8px_rgba(37,99,235,0.28)]"></span>
+        <div className="w-[20%] bg-gradient-to-b from-white to-slate-50 border-r border-slate-200 p-7 flex flex-col gap-6 overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(15,23,42,0.04)]">
+          <h2 className="font-bold text-slate-500 uppercase tracking-widest text-xs flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#0D9488] shadow-[0_0_10px_rgba(13,148,136,0.35)]"></span>
             Upload Prescription
           </h2>
 
-          <input
-            type="file"
-            accept="image/*"
-            ref={fileInputRef}
-            onChange={handleImageUpload}
-            className="block w-full text-xs text-slate-300 file:mr-4 file:py-3 file:px-5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2563EB] file:text-white hover:file:bg-[#1D4ED8] file:transition-colors file:cursor-pointer cursor-pointer bg-[#0F172A] border border-[#334155] rounded-xl transition-all focus:outline-none focus:border-[#2563EB]"
-          />
+          <div>
+            <label className="group flex flex-col items-center justify-center gap-2 w-full py-6 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:border-[#0D9488] hover:bg-green-50/60 cursor-pointer transition-all">
+              <svg className="w-7 h-7 text-slate-400 group-hover:text-[#0D9488] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
+                {imageFile ? 'Change image' : 'Choose prescription image'}
+              </span>
+              <span className="text-[10px] text-slate-400">JPG, PNG · tap to upload</span>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+            </label>
+            {imageFile && (
+              <p className="mt-2 text-[11px] text-slate-500 font-medium truncate" title={imageFile.name}>
+                {imageFile.name}
+              </p>
+            )}
+          </div>
 
           {image && (
-            <div className="border border-[#334155] p-1.5 rounded-2xl bg-[#111827] shadow-inner">
-              <img src={image} alt="Preview" className="w-full rounded-xl object-contain max-h-56 bg-slate-900" />
+            <div className="border border-slate-200 p-1.5 rounded-2xl bg-white shadow-inner">
+              <img src={image} alt="Preview" className="w-full rounded-xl object-contain max-h-56 bg-slate-100" />
             </div>
           )}
 
           <button
             onClick={handleExtract}
             disabled={!imageFile || loading}
-            className="w-full bg-[#2563EB] text-white font-bold py-3.5 rounded-xl disabled:opacity-40 disabled:hover:bg-[#2563EB] hover:bg-[#1D4ED8] transition-all shadow-lg shadow-[#2563EB]/20 text-sm tracking-wide flex justify-center items-center gap-2"
+            className="w-full btn-green text-white font-bold py-3.5 rounded-xl text-sm tracking-wide flex justify-center items-center gap-2"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -545,27 +552,27 @@ export default function App() {
           </button>
 
           {lastScanMetrics && (
-            <div className="bg-[#111827] border border-[#334155] rounded-xl p-5 mt-auto">
-              <h3 className="font-bold text-[10px] text-slate-300 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-[#60A5FA]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mt-auto">
+              <h3 className="font-bold text-[10px] text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 text-[#0D9488]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Token Metrics
               </h3>
               <div className="flex justify-between items-center mb-2.5 text-xs">
-                <span className="text-slate-400 font-medium">This Scan</span>
-                <span className="font-bold text-slate-100">
+                <span className="text-slate-500 font-medium">This Scan</span>
+                <span className="font-bold text-slate-800">
                   {lastScanMetrics.total_tokens?.toLocaleString()} tok
-                  <span className="text-slate-500 mx-1">|</span>
-                  <span className="text-[#60A5FA] font-mono">₹{lastScanMetrics.cost_inr?.toFixed(4)}</span>
+                  <span className="text-slate-300 mx-1">|</span>
+                  <span className="text-[#0D9488] font-mono">₹{lastScanMetrics.cost_inr?.toFixed(4)}</span>
                 </span>
               </div>
-              <div className="flex justify-between items-center border-t border-[#334155] pt-2.5 text-xs">
-                <span className="text-slate-400 font-medium">Session Total</span>
-                <span className="font-black text-slate-100">
+              <div className="flex justify-between items-center border-t border-slate-200 pt-2.5 text-xs">
+                <span className="text-slate-500 font-medium">Session Total</span>
+                <span className="font-black text-slate-800">
                   {sessionTokens.toLocaleString()} tok
-                  <span className="text-slate-500 mx-1">|</span>
-                  <span className="text-[#60A5FA] font-mono text-sm">₹{sessionCost.toFixed(4)}</span>
+                  <span className="text-slate-300 mx-1">|</span>
+                  <span className="text-[#0D9488] font-mono text-sm">₹{sessionCost.toFixed(4)}</span>
                 </span>
               </div>
             </div>
@@ -573,7 +580,7 @@ export default function App() {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="flex-1 p-8 relative flex flex-col overflow-hidden bg-[#FFF9F5]">
+        <div className="flex-1 p-8 relative flex flex-col overflow-hidden bg-transparent">
 
           {/* ── ERROR BANNER ── */}
           {errorMsg && (
@@ -599,16 +606,16 @@ export default function App() {
               {/* Orbiting spinner — like a radar dish scanning for data */}
               <div className="relative w-28 h-28 flex items-center justify-center">
                 {/* Center icon */}
-                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-900/40 z-10">
+                <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center shadow-xl shadow-green-900/40 z-10">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
                 {/* Inner ring */}
-                <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                <div className="absolute inset-0 rounded-full border-4 border-green-500/20 border-t-green-500 animate-spin" />
                 {/* Outer ring — spins the other way, like two gears */}
                 <div
-                  className="absolute -inset-4 rounded-full border-2 border-indigo-400/10 border-t-indigo-400/50 animate-spin"
+                  className="absolute -inset-4 rounded-full border-2 border-green-400/10 border-t-green-400/50 animate-spin"
                   style={{ animationDuration: '3s', animationDirection: 'reverse' }}
                 />
               </div>
@@ -658,9 +665,9 @@ export default function App() {
 
           {/* Sale success */}
           {!loading && saleResult?.success && (
-            <div className="bg-white border border-emerald-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl p-12 text-center mb-6 max-w-lg mx-auto mt-12">
-              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white border border-slate-200/70 shadow-card-lg rounded-3xl p-12 text-center mb-6 max-w-lg mx-auto mt-12 animate-rise">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -668,11 +675,11 @@ export default function App() {
               <p className="text-slate-500 font-medium mb-6">Receipt #{saleResult.bill_id}</p>
               <div className="bg-slate-50 rounded-2xl py-6 px-4 mb-8">
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Paid</p>
-                <p className="text-5xl font-black text-emerald-600">₹{(saleResult.grand_total ?? grandTotal).toFixed(2)}</p>
+                <p className="text-5xl font-black text-green-600">₹{(saleResult.grand_total ?? grandTotal).toFixed(2)}</p>
               </div>
               <button
                 onClick={resetTerminal}
-                className="w-full bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition-all text-lg"
+                className="w-full btn-green text-white px-8 py-4 rounded-xl font-bold text-lg"
               >
                 Start New Sale
               </button>
@@ -715,7 +722,7 @@ export default function App() {
             <div className="flex-1 flex flex-col overflow-hidden">
 
               {/* Patient Info + Summary */}
-              <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between mb-4">
+              <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200/70 shadow-card flex items-center justify-between mb-4">
 
                 {/* Left Section */}
                 <div className="flex items-center gap-5 flex-1 pr-6 border-r border-slate-100">
@@ -730,7 +737,7 @@ export default function App() {
                       value={patientName}
                       onChange={e => setPatientName(e.target.value)}
                       placeholder="Walk-in Patient"
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all"
                     />
                   </div>
 
@@ -748,7 +755,7 @@ export default function App() {
                       }}
                       type="number"
                       min="0"
-                      className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                      className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all"
                     />
                   </div>
 
@@ -761,7 +768,7 @@ export default function App() {
                     <select
                       value={patientGender}
                       onChange={e => setPatientGender(e.target.value)}
-                      className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none appearance-none transition-all"
+                      className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none appearance-none transition-all"
                     >
                       <option value="">Select</option>
                       <option value="Male">Male</option>
@@ -773,14 +780,14 @@ export default function App() {
                 </div>
 
                 {/* Right Section - Summary */}
-                <div className="pl-6 min-w-[190px] bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl px-4 py-3">
+                <div className="pl-6 min-w-[190px] bg-gradient-to-br from-green-50 to-green-100/70 border border-green-200/80 rounded-xl px-4 py-3">
 
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       Grand Total:
                     </span>
 
-                    <span className="text-1xl font-black text-emerald-600">
+                    <span className="text-1xl font-black text-green-600">
                       ₹{grandTotal.toFixed(2)}
                     </span>
                   </div>
@@ -800,7 +807,7 @@ export default function App() {
               </div>
 
               {/* Table header */}
-              <div className="grid grid-cols-12 gap-3 px-5 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200 mb-2.5 bg-white rounded-xl shadow-sm flex-shrink-0">
+              <div className="grid grid-cols-12 gap-3 px-5 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card flex-shrink-0">
                 <div className="col-span-4">Medicine</div>
                 <div className="col-span-2 text-center">Qty</div>
                 <div className="col-span-1 text-center">Pack</div>
@@ -810,19 +817,20 @@ export default function App() {
               </div>
 
               {/* Cart rows */}
-              <div className="overflow-y-auto flex-1 pr-2 pb-28 space-y-2.5">
+              <div className="overflow-y-auto flex-1 pr-2 pb-28">
+                <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card divide-y divide-slate-200/70">
                 {cart.map((item, i) => (
                   <div
                     key={i}
-                    className={`grid grid-cols-12 gap-2 items-center rounded-xl p-2 shadow-sm border transition-all duration-200 min-h-[80px] ${
+                    className={`grid grid-cols-12 gap-2 items-center p-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
                       item.isUnavailable
-                        ? 'bg-slate-50/50 border-slate-200 opacity-60'
-                        : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-md'
+                        ? 'bg-slate-50/50 opacity-60'
+                        : 'hover:bg-slate-50/70'
                     }`}
                   >
                     <div className="col-span-4 min-h-[80px] flex flex-col justify-between gap-1 py-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded uppercase tracking-wider text-[9px] font-black ${item.isManual ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-indigo-50 text-indigo-700 border-indigo-100/50'}`}>
+                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded uppercase tracking-wider text-[9px] font-black ${item.isManual ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-green-50 text-green-700 border-green-100/50'}`}>
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {item.isManual ? (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -836,7 +844,7 @@ export default function App() {
                           item.extractedMatches?.length > 0 && (
                             <button
                               onClick={() => switchToAuto(i)}
-                              className="text-[10px] text-indigo-600 hover:bg-indigo-50 font-bold border border-transparent hover:border-indigo-200 rounded px-2 py-1 transition-colors uppercase tracking-wide"
+                              className="text-[10px] text-green-600 hover:bg-green-50 font-bold border border-transparent hover:border-green-200 rounded px-2 py-1 transition-colors uppercase tracking-wide"
                             >
                               ↩ Restore AI
                             </button>
@@ -855,7 +863,7 @@ export default function App() {
                         <div className="relative w-full">
                           {item.isManual ? (
                             <>
-                              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 bg-slate-50 transition-all">
+                              <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 bg-slate-50 transition-all">
                                 <input
                                   value={item.manualQuery}
                                   onChange={e => updateManualSearch(i, e.target.value)}
@@ -878,7 +886,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={e => e.preventDefault()}
                                       onClick={() => selectManualMatch(i, j)}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-indigo-50 text-slate-900' : 'text-slate-700 hover:bg-slate-50'}`}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-50 text-slate-900' : 'text-slate-700 hover:bg-slate-50'}`}
                                     >
                                       {match.matched_text}
                                     </button>
@@ -891,7 +899,7 @@ export default function App() {
                               value={item.selectedIndex}
                               onChange={e => updateSelection(i, parseInt(e.target.value))}
                               disabled={item.isUnavailable}
-                              className="w-full border border-slate-200 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-slate-50 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 transition-all cursor-pointer"
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-slate-50 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 transition-all cursor-pointer"
                             >
                               {item.matches.map((match, j) => (
                                 <option key={j} value={j}>{match.matched_text}</option>
@@ -926,7 +934,7 @@ export default function App() {
                         onChange={e => updateQty(i, e.target.value)}
                         placeholder="Qty"
                         disabled={item.isUnavailable}
-                        className="w-full max-w-[92px] border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-bold text-center focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 bg-slate-50 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 transition-all"
+                        className="w-full max-w-[92px] border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-bold text-center focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-slate-50 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 transition-all"
                       />
                     </div>
 
@@ -959,14 +967,15 @@ export default function App() {
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
 
               {/* Fixed bottom action bar */}
               <div className="absolute bottom-0 left-8 right-8 pb-8 pt-6 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent z-10 pointer-events-none">
-                <div className="bg-white p-4 rounded-2xl shadow-[0_-8px_30px_rgb(0,0,0,0.04)] border border-slate-200 flex justify-between items-center pointer-events-auto">
+                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-between items-center pointer-events-auto">
                   <button
                     onClick={addManualRow}
-                    className="text-sm text-indigo-600 font-bold hover:bg-indigo-50 px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 border border-transparent hover:border-indigo-100"
+                    className="text-sm text-green-600 font-bold hover:bg-green-50 px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 border border-transparent hover:border-green-100"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
                     Add Row
@@ -974,7 +983,7 @@ export default function App() {
                   <button
                     onClick={handleConfirmSale}
                     disabled={!hasBillableItems}
-                    className="font-black text-base px-10 py-4 rounded-xl transition-all shadow-md bg-emerald-600 text-white hover:bg-emerald-500 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center gap-3 tracking-wide"
+                    className="font-black text-base px-10 py-4 rounded-xl btn-green text-white hover:-translate-y-0.5 disabled:cursor-not-allowed flex items-center gap-3 tracking-wide"
                   >
                     Confirm Sale
                     <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>

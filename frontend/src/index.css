@@ -1,1 +1,83 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  Theme — clean SaaS: blue accent · cool-gray neutrals · dark navy    */
+/*  sidebar. Remapping `green` (accent) recolours the whole app; slate  */
+/*  neutrals use Tailwind defaults (cool gray).                         */
+/* ------------------------------------------------------------------ */
+@theme {
+  /* Accent — teal (Tailwind teal ramp) — pops on both the dark navy
+     sidebar and the white cards, and harmonises with the green logo. */
+  --color-green-50:  #F0FDFA;
+  --color-green-100: #CCFBF1;
+  --color-green-200: #99F6E4;
+  --color-green-300: #5EEAD4;
+  --color-green-400: #2DD4BF;
+  --color-green-500: #14B8A6;
+  --color-green-600: #0D9488;
+  --color-green-700: #0F766E;
+  --color-green-800: #115E59;
+  --color-green-900: #134E4A;
+  --color-green-950: #042F2E;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                               */
+/* ------------------------------------------------------------------ */
+html, body, #root { height: 100%; }
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Surfaces & effects                                                 */
+/* ------------------------------------------------------------------ */
+
+/* Chrome (header / sidebar / login) — dark navy. */
+.bg-navy-gradient {
+  background: linear-gradient(160deg, #24344A 0%, #1B2838 58%, #141E2B 100%);
+}
+
+/* Working canvas — light cool gray with a whisper of blue. */
+.bg-app-canvas {
+  background:
+    radial-gradient(1100px 560px at 100% -8%, rgba(37, 99, 235, 0.05), transparent 60%),
+    #F1F3F6;
+}
+
+/* Primary button — muted deep-teal gradient (calm, not a highlighter). */
+.btn-green {
+  background: linear-gradient(180deg, #0F9B8C 0%, #0D8478 55%, #0F6E66 100%);
+  box-shadow:
+    0 8px 18px -8px rgba(13, 132, 120, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.btn-green:hover:not(:disabled)  { filter: brightness(1.06); }
+.btn-green:active:not(:disabled) { filter: brightness(0.97); transform: translateY(1px); }
+.btn-green:disabled { filter: saturate(0.35) opacity(0.55); box-shadow: none; cursor: not-allowed; }
+
+/* Layered card shadows (cool-tinted). */
+.shadow-card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px -6px rgba(15, 23, 42, 0.10);
+}
+.shadow-card-lg {
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 16px 40px -12px rgba(15, 23, 42, 0.16);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Animations                                                         */
+/* ------------------------------------------------------------------ */
+@keyframes dispensa-indeterminate {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+.animate-indeterminate { animation: dispensa-indeterminate 1.1s ease-in-out infinite; }
+
+@keyframes dispensa-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: dispensa-rise .35s ease-out both; }
