@@ -10,6 +10,9 @@ python-dotenv==1.2.2          # load backend/.env
 # --- Data validation ---
 pydantic==2.13.4
 
+# --- Authentication (JWT) ---
+PyJWT==2.10.1
+
 # --- Inventory data + fuzzy search ---
 pandas==3.0.3
 rapidfuzz==3.14.5

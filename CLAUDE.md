@@ -51,10 +51,22 @@ npm run build
 npm run lint
 ```
 
+## Authentication
+
+Isolated in `app/core/security.py` (token + credential logic),
+`app/routers/auth.py` (login + `/auth/me`), and `app/schemas/auth.py`.
+Current mode is a single shared password (`AUTH_PASSWORD`). Routes are
+protected by wiring `Depends(get_current_user)` at `include_router` time in
+`main.py`, so router files carry no auth code. To add per-user logins, change
+only `verify_credentials()` — the token flow and guards are unchanged.
+Frontend auth lives in `frontend/src/auth.js` + `Login.jsx`; `App.jsx` gates
+on a token and uses `authFetch`.
+
 ## Known gaps (prototype → production)
 
-No authentication yet; no DB migration tooling; `google.generativeai` is
+No DB migration tooling; SQLite is single-instance; `google.generativeai` is
 deprecated (migrate to `google-genai`).
 
-Done: `confirm-sale` now recomputes prices server-side (see checkout.py);
-pytest suite covers billing, search, checkout, and the API.
+Done: professional package layout; server-side pricing in `confirm-sale`
+(checkout.py); shared-password auth; neat error handling + logging; pytest
+suite (28 tests) covering billing, search, checkout, API, and auth.

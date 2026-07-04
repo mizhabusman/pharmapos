@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import Login from './Login'
+import { authFetch, getToken, logout } from './auth'
 
 // API base URL — set VITE_API_URL in a .env file for production hosting.
 // Falls back to the local dev server. Trailing slashes are trimmed.
@@ -45,6 +47,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
   const [errorMsg, setErrorMsg] = useState(null)
+  const [token, setTokenState] = useState(getToken())
 
   const fileInputRef = useRef(null)
 
@@ -52,6 +55,19 @@ export default function App() {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // If any request comes back 401, auth.js clears the token and fires this
+  // event — drop back to the login screen.
+  useEffect(() => {
+    const onUnauthorized = () => setTokenState(null)
+    window.addEventListener('pharmapos:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('pharmapos:unauthorized', onUnauthorized)
+  }, [])
+
+  function handleLogout() {
+    logout()
+    setTokenState(null)
+  }
 
   // Rotate loading messages every 2 seconds while loading.
   // (The index is reset to 0 in handleExtract when loading begins, so we
@@ -76,7 +92,7 @@ export default function App() {
 
   async function searchMedicine(name) {
     try {
-      const res = await fetch(`${API}/search?query=${encodeURIComponent(name)}`)
+      const res = await authFetch(`${API}/search?query=${encodeURIComponent(name)}`)
       const data = await res.json()
       return data.results || []
     } catch (err) {
@@ -87,7 +103,7 @@ export default function App() {
 
   async function getBilling(item_code, rx_qty) {
     try {
-      const res = await fetch(`${API}/billing?item_code=${item_code}&rx_qty=${rx_qty}`)
+      const res = await authFetch(`${API}/billing?item_code=${item_code}&rx_qty=${rx_qty}`)
       const data = await res.json()
       return data
     } catch (err) {
@@ -141,7 +157,7 @@ export default function App() {
     try {
       const formData = new FormData()
       formData.append('file', imageFile)
-      const res = await fetch(`${API}/extract`, { method: 'POST', body: formData })
+      const res = await authFetch(`${API}/extract`, { method: 'POST', body: formData })
       const data = await res.json()
 
       if (!res.ok) {
@@ -427,7 +443,7 @@ export default function App() {
       }))
 
     try {
-      const res = await fetch(`${API}/confirm-sale`, {
+      const res = await authFetch(`${API}/confirm-sale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -449,6 +465,11 @@ export default function App() {
   const timeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const dateString = currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
 
+  // Gate the whole app behind login — no token, no POS.
+  if (!token) {
+    return <Login apiBase={API} onSuccess={() => setTokenState(getToken())} />
+  }
+
   return (
     <div className="h-screen bg-[#F4F5F7] flex flex-col overflow-hidden font-sans text-slate-800">
 
@@ -465,9 +486,21 @@ export default function App() {
             <p className="text-slate-300 text-[10px] font-bold uppercase tracking-widest">Prescription Intelligence</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-slate-100 tracking-wide">{timeString}</p>
-          <p className="text-sm font-medium text-slate-400">{dateString}</p>
+        <div className="flex items-center gap-5">
+          <div className="text-right">
+            <p className="text-lg font-bold text-slate-100 tracking-wide">{timeString}</p>
+            <p className="text-sm font-medium text-slate-400">{dateString}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Log out"
+            className="flex items-center gap-2 text-slate-300 hover:text-white bg-[#0F172A] hover:bg-[#334155] border border-[#334155] rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
+          </button>
         </div>
       </div>
 

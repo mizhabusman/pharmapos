@@ -67,14 +67,33 @@ def db_path(tmp_path, monkeypatch):
     return path
 
 
+TEST_PASSWORD = "test-pass"
+
+
 @pytest.fixture()
-def client(db_path):
-    """A TestClient whose app was built against the seeded temp DB."""
+def auth_env(monkeypatch):
+    """Configure a known shared password + signing key for the auth layer."""
+    monkeypatch.setattr("app.core.security.AUTH_PASSWORD", TEST_PASSWORD)
+    monkeypatch.setattr("app.core.security.AUTH_SECRET_KEY", "test-secret-key")
+
+
+@pytest.fixture()
+def anon_client(db_path, auth_env):
+    """A TestClient with NO auth header — for testing the login flow / 401s."""
     from starlette.testclient import TestClient
 
     from app.main import create_app
 
     return TestClient(create_app())
+
+
+@pytest.fixture()
+def client(anon_client):
+    """A TestClient that is already logged in (bearer token on every request)."""
+    resp = anon_client.post("/auth/login", json={"password": TEST_PASSWORD})
+    token = resp.json()["access_token"]
+    anon_client.headers.update({"Authorization": f"Bearer {token}"})
+    return anon_client
 
 
 @pytest.fixture()

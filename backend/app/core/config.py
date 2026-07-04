@@ -44,3 +44,14 @@ INR_CONVERSION_RATE = float(os.getenv("INR_CONVERSION_RATE", "83.5"))
 # CORS — comma-separated list of allowed frontend origins
 # ---------------------------------------------------------------------------
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+# Current mode: a single shared login password/PIN (AUTH_PASSWORD). The token
+# layer below is identity-agnostic, so switching to per-user accounts later
+# only means changing how credentials are verified (see core/security.py).
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")            # shared login secret
+AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "dev-insecure-change-me")
+AUTH_ALGORITHM = "HS256"
+AUTH_TOKEN_EXPIRE_MINUTES = int(os.getenv("AUTH_TOKEN_EXPIRE_MINUTES", "720"))  # 12h
