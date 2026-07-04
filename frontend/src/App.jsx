@@ -604,7 +604,7 @@ export default function App() {
               <p className="text-slate-500 font-medium mb-6">Receipt #{saleResult.bill_id}</p>
               <div className="bg-slate-50 rounded-2xl py-6 px-4 mb-8">
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Paid</p>
-                <p className="text-5xl font-black text-emerald-600">₹{grandTotal.toFixed(2)}</p>
+                <p className="text-5xl font-black text-emerald-600">₹{(saleResult.grand_total ?? grandTotal).toFixed(2)}</p>
               </div>
               <button
                 onClick={resetTerminal}
