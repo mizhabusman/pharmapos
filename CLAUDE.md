@@ -43,6 +43,7 @@ inventory → pack-based billing → confirm sale against live SQLite stock.
 # Backend (from backend/)
 uvicorn app.main:app --reload
 python scripts/db_setup.py
+pytest                              # tests use an isolated temp DB (see tests/conftest.py)
 
 # Frontend (from frontend/)
 npm run dev
@@ -52,5 +53,8 @@ npm run lint
 
 ## Known gaps (prototype → production)
 
-No auth; `confirm-sale` trusts client-supplied `line_total`/`grand_total`
-(server should recompute); no automated tests yet; no DB migration tooling.
+No authentication yet; no DB migration tooling; `google.generativeai` is
+deprecated (migrate to `google-genai`).
+
+Done: `confirm-sale` now recomputes prices server-side (see checkout.py);
+pytest suite covers billing, search, checkout, and the API.

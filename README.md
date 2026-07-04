@@ -66,6 +66,16 @@ uvicorn app.main:app --reload
 
 The API serves on `http://localhost:8000` (interactive docs at `/docs`).
 
+Run the test suite (from `backend/`):
+
+```bash
+pip install -r requirements-dev.txt   # first time only
+pytest
+```
+
+Tests run against a throwaway seeded database — they never touch
+`data/pharmacy_inventory.db`.
+
 ### 2. Frontend
 
 ```bash
