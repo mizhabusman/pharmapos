@@ -49,6 +49,7 @@ export default function App() {
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
   const [errorMsg, setErrorMsg] = useState(null)
   const [token, setTokenState] = useState(getToken())
+  const [flashIncomplete, setFlashIncomplete] = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -218,7 +219,19 @@ export default function App() {
     }
   }
 
+  // A row counts as "complete" once a medicine is selected and it has a qty.
+  function rowIsComplete(item) {
+    return item.selectedItemCode != null && Number(item.rx_qty) > 0
+  }
+
   function addManualRow() {
+    // If any row is still incomplete, don't add — flash-highlight it instead
+    // so the user sees what needs finishing.
+    if (!cart.every(rowIsComplete)) {
+      setFlashIncomplete(true)
+      setTimeout(() => setFlashIncomplete(false), 1100)
+      return
+    }
     setCart(prev => [...prev, createEmptyRow()])
   }
 
@@ -823,6 +836,8 @@ export default function App() {
                   <div
                     key={i}
                     className={`grid grid-cols-12 gap-2 items-center p-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
+                      flashIncomplete && !rowIsComplete(item) ? 'animate-flash relative z-10' : ''
+                    } ${
                       item.isUnavailable
                         ? 'bg-slate-50/50 opacity-60'
                         : 'hover:bg-slate-50/70'
