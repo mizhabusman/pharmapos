@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Login from './Login'
 import { LogoLockup } from './Logo'
+import SelectField from './SelectField'
 import { authFetch, getToken, logout } from './auth'
 
 // API base URL — set VITE_API_URL in a .env file for production hosting.
@@ -24,6 +25,33 @@ const createEmptyRow = () => ({
   stockWarning: null,
   isUnavailable: false
 })
+
+// A row is "empty" when the user hasn't put anything in it yet — no medicine
+// selected, nothing typed, no qty. (AI-extracted rows are never empty.)
+const isRowEmpty = (item) =>
+  item.isManual && !item.selectedItemCode && !item.manualQuery && !item.rx_qty
+
+// A manual row with no committed medicine is still open for input — it IS the
+// entry point, however much has been typed in it. A new phantom is only owed
+// once this row commits (medicine selected), which is what stops "type one
+// letter per row" from spawning endless rows.
+const isEntryRow = (item) => item.isManual && !item.selectedItemCode
+
+// Phantom-row invariant: the cart always ends with exactly ONE uncommitted
+// manual row that acts as the entry point for the next item (standard
+// billing-grid pattern). Appends one when the last row is committed;
+// collapses a redundant trailing empty when the row before it can already
+// serve as the entry point (only ever pops the final row, so focus is safe).
+const withPhantomRow = (rows) => {
+  const next = [...rows]
+  while (next.length >= 2 && isRowEmpty(next[next.length - 1]) && isEntryRow(next[next.length - 2])) {
+    next.pop()
+  }
+  if (next.length === 0 || !isEntryRow(next[next.length - 1])) {
+    next.push(createEmptyRow())
+  }
+  return next
+}
 
 const loadingMessages = [
   "Reading prescription handwriting...",
@@ -49,9 +77,31 @@ export default function App() {
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
   const [errorMsg, setErrorMsg] = useState(null)
   const [token, setTokenState] = useState(getToken())
-  const [flashIncomplete, setFlashIncomplete] = useState(false)
 
   const fileInputRef = useRef(null)
+  const rowsScrollRef = useRef(null)
+  const prevRowCount = useRef(1) // matches the initial single-phantom cart
+
+  // When committing a medicine spawns the next phantom row below the fold,
+  // scroll it into view. Only fires when exactly ONE row was appended — a
+  // full cart rebuild (AI extraction) must not yank the view to the bottom.
+  useEffect(() => {
+    const prev = prevRowCount.current
+    prevRowCount.current = cart.length
+    if (cart.length !== prev + 1) return
+    const el = rowsScrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    // The billing response re-renders the committed row a moment later, which
+    // aborts an in-flight smooth scroll (Chrome). Snap the remaining distance
+    // if that happened.
+    const settle = setTimeout(() => {
+      if (el.scrollTop + el.clientHeight < el.scrollHeight - 4) {
+        el.scrollTo({ top: el.scrollHeight })
+      }
+    }, 450)
+    return () => clearTimeout(settle)
+  }, [cart.length])
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -87,7 +137,8 @@ export default function App() {
     if (!file) return
     setImageFile(file)
     setImage(URL.createObjectURL(file))
-    setCart([createEmptyRow()])
+    // Deliberately leave the cart alone — anything entered manually before
+    // scanning must survive (extraction merges rather than replaces).
     setSaleResult(null)
     setErrorMsg(null)
   }
@@ -152,7 +203,6 @@ export default function App() {
     if (!imageFile) return
     setLoading(true)
     setLoadingMsgIndex(0)
-    setCart([])
     setSaleResult(null)
     setErrorMsg(null)
 
@@ -173,11 +223,12 @@ export default function App() {
       }
 
       const extracted = data.extracted_data
-      setPatientName(extracted.patient_name === 'Unknown' ? '' : extracted.patient_name)
-      setPatientAge(extracted.age || '')
+      // Manually entered patient details always win — AI only fills the gaps.
+      setPatientName(prev => prev || (extracted.patient_name === 'Unknown' ? '' : extracted.patient_name))
+      setPatientAge(prev => prev || (extracted.age || ''))
 
       const validGenders = ['Male', 'Female', 'Other']
-      setPatientGender(validGenders.includes(extracted.gender) ? extracted.gender : '')
+      setPatientGender(prev => prev || (validGenders.includes(extracted.gender) ? extracted.gender : ''))
 
       const cartItems = await Promise.all(
         extracted.medicines.map(async (med) => {
@@ -209,34 +260,26 @@ export default function App() {
         })
       )
 
-      setCart(cartItems.length > 0 ? cartItems : [createEmptyRow()])
+      // Merge, never replace: rows the user entered (or manually overrode)
+      // stay first; the freshly extracted rows follow. Old AI rows from a
+      // previous scan are dropped — machine output is replaceable, user
+      // input is not.
+      setCart(prev => withPhantomRow([
+        ...prev.filter(row => row.isManual && !isRowEmpty(row)),
+        ...cartItems,
+      ]))
     } catch (err) {
       console.error('Extraction failed:', err)
       setErrorMsg(err.message || 'Could not process the prescription. Please try another image.')
-      setCart([createEmptyRow()])
+      // Leave the cart exactly as it was — a failed scan must not cost the
+      // user their manually entered rows.
     } finally {
       setLoading(false)
     }
   }
 
-  // A row counts as "complete" once a medicine is selected and it has a qty.
-  function rowIsComplete(item) {
-    return item.selectedItemCode != null && Number(item.rx_qty) > 0
-  }
-
-  function addManualRow() {
-    // If any row is still incomplete, don't add — flash-highlight it instead
-    // so the user sees what needs finishing.
-    if (!cart.every(rowIsComplete)) {
-      setFlashIncomplete(true)
-      setTimeout(() => setFlashIncomplete(false), 1100)
-      return
-    }
-    setCart(prev => [...prev, createEmptyRow()])
-  }
-
   function switchToManual(i) {
-    setCart(prev => prev.map((it, idx) =>
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
       idx === i ? {
         ...it,
         isManual: true,
@@ -250,11 +293,11 @@ export default function App() {
         stockWarning: null,
         isUnavailable: false
       } : it
-    ))
+    )))
   }
 
   function switchToAuto(i) {
-    setCart(prev => prev.map((it, idx) => {
+    setCart(prev => withPhantomRow(prev.map((it, idx) => {
       if (idx !== i) return it
       const state = it.extractedState
       if (!state) return it
@@ -272,11 +315,13 @@ export default function App() {
         stockWarning: state.stockWarning,
         isUnavailable: state.isUnavailable
       }
-    }))
+    })))
   }
 
   async function updateManualSearch(i, query) {
-    setCart(prev => prev.map((it, idx) =>
+    // Typing never spawns a new row — the row stays the single entry point
+    // until a medicine is committed (see withPhantomRow / isEntryRow).
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
       idx === i ? {
         ...it,
         manualQuery: query,
@@ -287,7 +332,7 @@ export default function App() {
         stockWarning: null,
         isUnavailable: false
       } : it
-    ))
+    )))
 
     if (query.length < 2) {
       setCart(prev => prev.map((it, idx) =>
@@ -334,7 +379,7 @@ export default function App() {
     const qty = item.rx_qty || 1
     const displayText = match.matched_text
 
-    setCart(prev => prev.map((it, idx) =>
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
       idx === i ? {
         ...it,
         selectedIndex: matchIndex,
@@ -345,7 +390,7 @@ export default function App() {
         showDropdown: false,
         rx_qty: qty
       } : it
-    ))
+    )))
 
     const stockState = await fetchBillingWithCap(match.item_code, qty)
     setCart(prev => prev.map((it, idx) =>
@@ -360,7 +405,7 @@ export default function App() {
   }
 
   function clearManualSelection(i) {
-    setCart(prev => prev.map((it, idx) =>
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
       idx === i ? {
         ...it,
         manualQuery: '',
@@ -373,7 +418,7 @@ export default function App() {
         stockWarning: null,
         isUnavailable: false
       } : it
-    ))
+    )))
   }
 
   async function updateSelection(i, newIndex) {
@@ -400,9 +445,9 @@ export default function App() {
   async function updateQty(i, value) {
     const newQty = value === '' ? '' : parseInt(value)
 
-    setCart(prev => prev.map((it, idx) =>
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
       idx === i ? { ...it, rx_qty: newQty } : it
-    ))
+    )))
 
     const item = cart[i]
     if (newQty > 0 && item.selectedItemCode) {
@@ -420,10 +465,7 @@ export default function App() {
   }
 
   function removeRow(i) {
-    setCart(prev => {
-      const newCart = prev.filter((_, idx) => idx !== i)
-      return newCart.length === 0 ? [createEmptyRow()] : newCart
-    })
+    setCart(prev => withPhantomRow(prev.filter((_, idx) => idx !== i)))
   }
 
   function resetTerminal() {
@@ -778,16 +820,13 @@ export default function App() {
                       Gender
                     </label>
 
-                    <select
+                    <SelectField
                       value={patientGender}
-                      onChange={e => setPatientGender(e.target.value)}
-                      className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold text-slate-800 focus:bg-white focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none appearance-none transition-all"
-                    >
-                      <option value="">Select</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                      onChange={setPatientGender}
+                      options={['Male', 'Female', 'Other']}
+                      placeholder="Select"
+                      className="w-32"
+                    />
                   </div>
 
                 </div>
@@ -830,14 +869,12 @@ export default function App() {
               </div>
 
               {/* Cart rows */}
-              <div className="overflow-y-auto flex-1 pr-2 pb-28">
+              <div ref={rowsScrollRef} className="overflow-y-auto flex-1 pr-2 pb-28">
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card divide-y divide-slate-200/70">
                 {cart.map((item, i) => (
                   <div
                     key={i}
                     className={`grid grid-cols-12 gap-2 items-center p-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
-                      flashIncomplete && !rowIsComplete(item) ? 'animate-flash relative z-10' : ''
-                    } ${
                       item.isUnavailable
                         ? 'bg-slate-50/50 opacity-60'
                         : 'hover:bg-slate-50/70'
@@ -901,7 +938,7 @@ export default function App() {
                                       type="button"
                                       onMouseDown={e => e.preventDefault()}
                                       onClick={() => selectManualMatch(i, j)}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-50 text-slate-900' : 'text-slate-700 hover:bg-slate-50'}`}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-100 text-green-900' : 'text-slate-700 hover:bg-slate-50'}`}
                                     >
                                       {match.matched_text}
                                     </button>
@@ -973,12 +1010,16 @@ export default function App() {
                     </div>
 
                     <div className="col-span-1 text-center">
-                      <button
-                        onClick={() => removeRow(i)}
-                        className="w-7 h-7 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center mx-auto transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      </button>
+                      {/* The trailing phantom row is the entry point for the
+                          next item — it can't be deleted. */}
+                      {!(i === cart.length - 1 && isRowEmpty(item)) && (
+                        <button
+                          onClick={() => removeRow(i)}
+                          className="w-7 h-7 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center mx-auto transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -987,14 +1028,7 @@ export default function App() {
 
               {/* Fixed bottom action bar */}
               <div className="absolute bottom-0 left-8 right-8 pb-8 pt-6 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent z-10 pointer-events-none">
-                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-between items-center pointer-events-auto">
-                  <button
-                    onClick={addManualRow}
-                    className="text-sm text-green-600 font-bold hover:bg-green-50 px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 border border-transparent hover:border-green-100"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
-                    Add Row
-                  </button>
+                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-end items-center pointer-events-auto">
                   <button
                     onClick={handleConfirmSale}
                     disabled={!hasBillableItems}
