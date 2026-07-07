@@ -950,11 +950,13 @@ export default function App() {
 
               {/* Cart rows. The header lives INSIDE the same scroll box (sticky)
                   so its columns line up exactly with the rows — same width,
-                  same scrollbar inset. A fixed 2.5rem serial-number column sits
-                  before the 12 proportional columns (identical in both). */}
+                  same scrollbar inset. A fixed 2.75rem serial-number column sits
+                  before the 12 proportional columns (identical in both). "S.No"
+                  matches the label pharmacists already see on printed bills and
+                  billing software (Tally/Marg/GST formats), not a generic "#". */}
               <div ref={rowsScrollRef} className="overflow-y-auto flex-1 pr-2 pb-28">
-                <div className="grid grid-cols-[2.5rem_repeat(12,minmax(0,1fr))] gap-2 px-4 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card sticky top-0 z-10">
-                  <div className="text-center">#</div>
+                <div className="grid grid-cols-[2.75rem_repeat(12,minmax(0,1fr))] gap-2 px-4 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card sticky top-0 z-10">
+                  <div className="text-center tracking-normal">S.No</div>
                   <div className="col-span-4">Medicine</div>
                   <div className="col-span-2 text-center">Qty</div>
                   <div className="col-span-1 text-center">Pack</div>
@@ -967,7 +969,7 @@ export default function App() {
                 {cart.map((item, i) => (
                   <div
                     key={i}
-                    className={`grid grid-cols-[2.5rem_repeat(12,minmax(0,1fr))] gap-2 items-center px-4 py-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
+                    className={`grid grid-cols-[2.75rem_repeat(12,minmax(0,1fr))] gap-2 items-center px-4 py-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
                       item.isUnavailable
                         ? 'bg-slate-50/50 opacity-60'
                         : 'hover:bg-slate-50/70'
@@ -1035,8 +1037,11 @@ export default function App() {
                                       key={j}
                                       type="button"
                                       onMouseDown={e => e.preventDefault()}
+                                      onMouseEnter={() => setCart(prev => prev.map((it, idx) =>
+                                        idx === i ? { ...it, highlightedIndex: j } : it
+                                      ))}
                                       onClick={() => selectManualMatch(i, j)}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-600 text-white' : 'text-slate-700 hover:bg-green-50'}`}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-600 text-white' : 'text-slate-700'}`}
                                     >
                                       {match.matched_text}
                                     </button>

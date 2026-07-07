@@ -106,9 +106,10 @@ export default function SelectField({ value, onChange, options, placeholder = 'S
               key={opt}
               type="button"
               onMouseDown={e => e.preventDefault()}
+              onMouseEnter={() => setHighlighted(j)}
               onClick={() => selectOption(opt)}
               className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                highlighted === j ? 'bg-green-600 text-white' : 'text-slate-700 hover:bg-green-50'
+                highlighted === j ? 'bg-green-600 text-white' : 'text-slate-700'
               } ${opt === value && highlighted !== j ? 'font-bold' : ''}`}
             >
               {opt}
