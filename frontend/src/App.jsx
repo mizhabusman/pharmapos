@@ -199,7 +199,14 @@ export default function App() {
     return { billing, rx_qty: qty, stockWarning: null, isUnavailable: false }
   }
 
-  async function handleExtract() {
+  // mode controls how a scan merges with what's already in the cart:
+  //   'replace' — re-scan of the SAME prescription: drop the previous scan's
+  //               AI rows, keep manual rows, add the fresh AI rows.
+  //   'append'  — a DIFFERENT prescription for the same bill: keep everything
+  //               already there (manual + earlier AI rows) and add the new AI
+  //               rows after it.
+  // Patient name/age/gender are fill-if-empty in both modes (earliest wins).
+  async function handleExtract(mode = 'replace') {
     if (!imageFile) return
     setLoading(true)
     setLoadingMsgIndex(0)
@@ -260,14 +267,19 @@ export default function App() {
         })
       )
 
-      // Merge, never replace: rows the user entered (or manually overrode)
-      // stay first; the freshly extracted rows follow. Old AI rows from a
-      // previous scan are dropped — machine output is replaceable, user
-      // input is not.
-      setCart(prev => withPhantomRow([
-        ...prev.filter(row => row.isManual && !isRowEmpty(row)),
-        ...cartItems,
-      ]))
+      // Merge, never wipe. Which existing rows we keep depends on `mode`:
+      //   - manual rows (incl. AI rows the user overrode) always survive;
+      //   - previous AI rows survive only when appending a different Rx.
+      // Kept rows stay first; the freshly extracted rows follow. The phantom
+      // entry row (empty) is dropped here and re-added by withPhantomRow.
+      setCart(prev => {
+        const kept = prev.filter(row => {
+          if (isRowEmpty(row)) return false      // drop the empty phantom row
+          if (row.isManual) return true          // manual input is never lost
+          return mode === 'append'               // earlier AI rows: keep only when adding a new Rx
+        })
+        return withPhantomRow([...kept, ...cartItems])
+      })
     } catch (err) {
       console.error('Extraction failed:', err)
       setErrorMsg(err.message || 'Could not process the prescription. Please try another image.')
@@ -496,6 +508,11 @@ export default function App() {
   // so manually entered rows never disappear mid-scan.
   const showFullLoader = loading && !hasCartContent
 
+  // A prescription has already been scanned once there's at least one AI row
+  // (un-overridden extracted row). When true, a further scan asks whether it's
+  // a re-scan (replace) or a different Rx for the same bill (append).
+  const hasExtractedRows = cart.some(row => !row.isManual)
+
   async function handleConfirmSale() {
     const billingItems = cart
       .filter(item => item.billing?.billing && !item.isUnavailable)
@@ -598,21 +615,55 @@ export default function App() {
             </div>
           )}
 
-          <button
-            onClick={handleExtract}
-            disabled={!imageFile || loading}
-            className="w-full btn-green text-white font-bold py-3.5 rounded-xl text-sm tracking-wide flex justify-center items-center gap-2"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing AI...
-              </span>
-            ) : '🔍 Extract Data'}
-          </button>
+          {/* Extract action:
+              - while a scan runs → a single disabled "Processing AI…" button
+              - after a first scan (hasExtractedRows) → two labelled modes:
+                  re-scan the same Rx (replace) vs. a different Rx (append)
+              - otherwise → the normal single "Extract Data" button */}
+          {loading ? (
+            <button
+              disabled
+              className="w-full btn-green text-white font-bold py-3.5 rounded-xl text-sm tracking-wide flex justify-center items-center gap-2"
+            >
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing AI...
+            </button>
+          ) : hasExtractedRows ? (
+            <div className="flex flex-col gap-2.5">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Already scanned — scan again as:
+              </p>
+              <button
+                onClick={() => handleExtract('replace')}
+                disabled={!imageFile}
+                title="Re-scan of the same prescription — replaces the previously scanned items"
+                className="w-full flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 hover:border-green-400 hover:text-green-700 font-bold py-2.5 rounded-xl text-xs tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Re-scan (replace items)
+              </button>
+              <button
+                onClick={() => handleExtract('append')}
+                disabled={!imageFile}
+                title="A different prescription for the same bill — keeps current items and adds the new ones below"
+                className="w-full flex items-center justify-center gap-2 btn-green text-white font-bold py-2.5 rounded-xl text-xs tracking-wide disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4" /></svg>
+                Different Rx (add to bill)
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => handleExtract('replace')}
+              disabled={!imageFile}
+              className="w-full btn-green text-white font-bold py-3.5 rounded-xl text-sm tracking-wide flex justify-center items-center gap-2"
+            >
+              🔍 Extract Data
+            </button>
+          )}
 
           {lastScanMetrics && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mt-auto">
