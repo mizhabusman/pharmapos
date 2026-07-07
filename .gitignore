@@ -10,6 +10,7 @@ backend/.env
 # SQLite database (generated from data/real_database.csv via
 # backend/scripts/db_setup.py — not source-controlled)
 *.db
+*.db-journal
 
 # Node / frontend build output
 node_modules/

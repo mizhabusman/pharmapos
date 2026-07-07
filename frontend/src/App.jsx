@@ -948,28 +948,36 @@ export default function App() {
 
               </div>
 
-              {/* Table header */}
-              <div className="grid grid-cols-12 gap-3 px-5 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card flex-shrink-0">
-                <div className="col-span-4">Medicine</div>
-                <div className="col-span-2 text-center">Qty</div>
-                <div className="col-span-1 text-center">Pack</div>
-                <div className="col-span-2 text-center">Billable Packs</div>
-                <div className="col-span-2 text-right">Line Total</div>
-                <div className="col-span-1"></div>
-              </div>
-
-              {/* Cart rows */}
+              {/* Cart rows. The header lives INSIDE the same scroll box (sticky)
+                  so its columns line up exactly with the rows — same width,
+                  same scrollbar inset. A fixed 2.5rem serial-number column sits
+                  before the 12 proportional columns (identical in both). */}
               <div ref={rowsScrollRef} className="overflow-y-auto flex-1 pr-2 pb-28">
+                <div className="grid grid-cols-[2.5rem_repeat(12,minmax(0,1fr))] gap-2 px-4 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card sticky top-0 z-10">
+                  <div className="text-center">#</div>
+                  <div className="col-span-4">Medicine</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-1 text-center">Pack</div>
+                  <div className="col-span-2 text-center">Billable Packs</div>
+                  <div className="col-span-2 text-right">Line Total</div>
+                  <div className="col-span-1"></div>
+                </div>
+
                 <div className="bg-white rounded-2xl border border-slate-200/70 shadow-card divide-y divide-slate-200/70">
                 {cart.map((item, i) => (
                   <div
                     key={i}
-                    className={`grid grid-cols-12 gap-2 items-center p-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
+                    className={`grid grid-cols-[2.5rem_repeat(12,minmax(0,1fr))] gap-2 items-center px-4 py-2 transition-colors duration-200 min-h-[80px] first:rounded-t-2xl last:rounded-b-2xl ${
                       item.isUnavailable
                         ? 'bg-slate-50/50 opacity-60'
                         : 'hover:bg-slate-50/70'
                     }`}
                   >
+                    {/* Serial number — blank for the trailing empty entry row. */}
+                    <div className="text-center text-sm font-bold text-slate-400 self-center">
+                      {isRowEmpty(item) ? '' : i + 1}
+                    </div>
+
                     <div className="col-span-4 min-h-[80px] flex flex-col justify-between gap-1 py-1">
                       <div className="flex items-center justify-between gap-2">
                         <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded uppercase tracking-wider text-[9px] font-black ${item.isManual ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-green-50 text-green-700 border-green-100/50'}`}>
@@ -1021,14 +1029,14 @@ export default function App() {
                               </div>
 
                               {item.showDropdown && item.matches.length > 0 && (
-                                <div className="absolute z-30 mt-2 w-full rounded-2xl border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto">
+                                <div className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto">
                                   {item.matches.map((match, j) => (
                                     <button
                                       key={j}
                                       type="button"
                                       onMouseDown={e => e.preventDefault()}
                                       onClick={() => selectManualMatch(i, j)}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-100 text-green-900' : 'text-slate-700 hover:bg-slate-50'}`}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-600 text-white' : 'text-slate-700 hover:bg-green-50'}`}
                                     >
                                       {match.matched_text}
                                     </button>
@@ -1037,16 +1045,18 @@ export default function App() {
                               )}
                             </>
                           ) : (
-                            <select
-                              value={item.selectedIndex}
-                              onChange={e => updateSelection(i, parseInt(e.target.value))}
+                            /* AI-matched row — same themed dropdown as gender/manual */
+                            <SelectField
+                              value={item.matches[item.selectedIndex]?.matched_text || ''}
+                              options={item.matches.map(m => m.matched_text)}
+                              onChange={(text) => {
+                                const idx = item.matches.findIndex(m => m.matched_text === text)
+                                if (idx >= 0) updateSelection(i, idx)
+                              }}
+                              placeholder={item.extracted}
                               disabled={item.isUnavailable}
-                              className="w-full border border-slate-200 rounded-lg px-3 py-1 text-sm font-semibold focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 bg-slate-50 text-slate-800 disabled:bg-slate-100 disabled:text-slate-400 transition-all cursor-pointer"
-                            >
-                              {item.matches.map((match, j) => (
-                                <option key={j} value={j}>{match.matched_text}</option>
-                              ))}
-                            </select>
+                              className="w-full"
+                            />
                           )}
                         </div>
                       </div>

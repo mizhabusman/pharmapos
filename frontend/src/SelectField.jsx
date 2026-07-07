@@ -12,7 +12,8 @@ import { useEffect, useRef, useState } from 'react'
 //   options     — array of option strings
 //   placeholder — shown when nothing is selected (default 'Select')
 //   className   — extra classes for the wrapper (e.g. width)
-export default function SelectField({ value, onChange, options, placeholder = 'Select', className = '' }) {
+//   disabled    — greys out and blocks interaction
+export default function SelectField({ value, onChange, options, placeholder = 'Select', className = '', disabled = false }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(null) // null = not typing; input shows `value`
   const [highlighted, setHighlighted] = useState(0)
@@ -59,24 +60,30 @@ export default function SelectField({ value, onChange, options, placeholder = 'S
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
-      <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg focus-within:bg-white focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100 transition-all">
+      <div className={`flex items-center border border-slate-200 rounded-lg transition-all ${
+        disabled
+          ? 'bg-slate-100 opacity-60'
+          : 'bg-slate-50 focus-within:bg-white focus-within:border-green-500 focus-within:ring-2 focus-within:ring-green-100'
+      }`}>
         <input
           value={query !== null ? query : (value || '')}
           placeholder={placeholder}
+          disabled={disabled}
           onChange={e => { setQuery(e.target.value); setOpen(true); setHighlighted(0) }}
-          onFocus={() => setOpen(true)}
-          onClick={() => setOpen(true)}
+          onFocus={() => !disabled && setOpen(true)}
+          onClick={() => !disabled && setOpen(true)}
           onBlur={() => { setOpen(false); setQuery(null) }}
           onKeyDown={handleKeyDown}
-          className="w-full bg-transparent px-3 py-2 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-medium"
+          className="w-full bg-transparent px-3 py-2 text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400 placeholder:font-medium disabled:cursor-not-allowed"
         />
         <button
           type="button"
           tabIndex={-1}
           aria-label="Toggle options"
+          disabled={disabled}
           onMouseDown={e => e.preventDefault()}
-          onClick={() => { setOpen(o => !o); setQuery(null) }}
-          className="px-2 text-slate-400 hover:text-slate-600 transition-colors"
+          onClick={() => { if (!disabled) { setOpen(o => !o); setQuery(null) } }}
+          className="px-2 text-slate-400 hover:text-slate-600 transition-colors disabled:cursor-not-allowed"
         >
           <svg
             className={`w-4 h-4 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
@@ -87,12 +94,12 @@ export default function SelectField({ value, onChange, options, placeholder = 'S
         </button>
       </div>
 
-      {open && filtered.length > 0 && (
+      {open && !disabled && filtered.length > 0 && (
         // preventDefault on mousedown so interacting with the list (options,
         // scrollbar) never blurs the input and closes the dropdown early.
         <div
           onMouseDown={e => e.preventDefault()}
-          className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-xl max-h-56 overflow-y-auto"
+          className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto"
         >
           {filtered.map((opt, j) => (
             <button
@@ -101,8 +108,8 @@ export default function SelectField({ value, onChange, options, placeholder = 'S
               onMouseDown={e => e.preventDefault()}
               onClick={() => selectOption(opt)}
               className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                highlighted === j ? 'bg-green-100 text-green-900' : 'text-slate-700 hover:bg-slate-50'
-              } ${opt === value ? 'font-bold' : ''}`}
+                highlighted === j ? 'bg-green-600 text-white' : 'text-slate-700 hover:bg-green-50'
+              } ${opt === value && highlighted !== j ? 'font-bold' : ''}`}
             >
               {opt}
             </button>
