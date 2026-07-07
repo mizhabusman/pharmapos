@@ -199,12 +199,14 @@ export default function App() {
     return { billing, rx_qty: qty, stockWarning: null, isUnavailable: false }
   }
 
-  // mode controls how a scan merges with what's already in the cart:
-  //   'replace' — re-scan of the SAME prescription: drop the previous scan's
-  //               AI rows, keep manual rows, add the fresh AI rows.
+  // mode controls how a scan merges with what's already in the cart. Each
+  // extracted (AI) row carries a `scanBatch` number so scans stay separable:
+  //   'replace' — re-scan of the LAST prescription: drop only the most recent
+  //               scan's AI rows (earlier scans + manual rows are kept), then
+  //               add the fresh rows in that batch's place.
   //   'append'  — a DIFFERENT prescription for the same bill: keep everything
-  //               already there (manual + earlier AI rows) and add the new AI
-  //               rows after it.
+  //               already there (manual + all earlier AI rows) and add the new
+  //               AI rows after it as a new batch.
   // Patient name/age/gender are fill-if-empty in both modes (earliest wins).
   async function handleExtract(mode = 'replace') {
     if (!imageFile) return
@@ -267,18 +269,28 @@ export default function App() {
         })
       )
 
-      // Merge, never wipe. Which existing rows we keep depends on `mode`:
-      //   - manual rows (incl. AI rows the user overrode) always survive;
-      //   - previous AI rows survive only when appending a different Rx.
-      // Kept rows stay first; the freshly extracted rows follow. The phantom
-      // entry row (empty) is dropped here and re-added by withPhantomRow.
+      // Merge, never wipe. Manual rows (incl. AI rows the user overrode) always
+      // survive. For AI rows we look at their scanBatch:
+      //   - append  → keep every batch; the new rows form the next batch.
+      //   - replace → drop only the most recent batch (redo the last scan);
+      //               the new rows take that same batch number.
+      // Kept rows stay first; the fresh rows follow. The empty phantom row is
+      // dropped here and re-added by withPhantomRow.
       setCart(prev => {
+        const aiBatches = prev
+          .filter(row => !row.isManual && !isRowEmpty(row))
+          .map(row => row.scanBatch || 1)
+        const maxBatch = aiBatches.length ? Math.max(...aiBatches) : 0
+        const targetBatch = mode === 'append' ? maxBatch + 1 : Math.max(maxBatch, 1)
+
         const kept = prev.filter(row => {
-          if (isRowEmpty(row)) return false      // drop the empty phantom row
-          if (row.isManual) return true          // manual input is never lost
-          return mode === 'append'               // earlier AI rows: keep only when adding a new Rx
+          if (isRowEmpty(row)) return false                        // drop the empty phantom row
+          if (row.isManual) return true                            // manual input is never lost
+          if (mode === 'append') return true                       // keep every earlier scan
+          return (row.scanBatch || 1) !== maxBatch                 // replace: drop only the last batch
         })
-        return withPhantomRow([...kept, ...cartItems])
+        const newRows = cartItems.map(row => ({ ...row, scanBatch: targetBatch }))
+        return withPhantomRow([...kept, ...newRows])
       })
     } catch (err) {
       console.error('Extraction failed:', err)
@@ -639,11 +651,11 @@ export default function App() {
               <button
                 onClick={() => handleExtract('replace')}
                 disabled={!imageFile}
-                title="Re-scan of the same prescription — replaces the previously scanned items"
+                title="Re-scan the last prescription — replaces only the most recent scan's items (earlier scans stay)"
                 className="w-full flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 hover:border-green-400 hover:text-green-700 font-bold py-2.5 rounded-xl text-xs tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                Re-scan (replace items)
+                Re-scan (replace last scan)
               </button>
               <button
                 onClick={() => handleExtract('append')}
