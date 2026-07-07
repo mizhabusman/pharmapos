@@ -76,6 +76,7 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0)
   const [errorMsg, setErrorMsg] = useState(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [token, setTokenState] = useState(getToken())
 
   const fileInputRef = useRef(null)
@@ -115,6 +116,14 @@ export default function App() {
     window.addEventListener('pharmapos:unauthorized', onUnauthorized)
     return () => window.removeEventListener('pharmapos:unauthorized', onUnauthorized)
   }, [])
+
+  // Escape cancels the clear-all confirmation dialog.
+  useEffect(() => {
+    if (!showClearConfirm) return
+    const onKey = (e) => { if (e.key === 'Escape') setShowClearConfirm(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showClearConfirm])
 
   function handleLogout() {
     logout()
@@ -502,7 +511,10 @@ export default function App() {
     setPatientGender('')
     setLastScanMetrics(null)
     setErrorMsg(null)
+    setShowClearConfirm(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
+    // Note: session token/cost totals are intentionally NOT reset here — they
+    // accumulate across bills for the whole session.
   }
 
   const grandTotal = cart.reduce((sum, item) =>
@@ -519,6 +531,10 @@ export default function App() {
   // Otherwise we keep the cart visible and show a non-blocking strip instead,
   // so manually entered rows never disappear mid-scan.
   const showFullLoader = loading && !hasCartContent
+
+  // "Clear all" is only meaningful when the bill actually has something in it —
+  // any cart item, patient detail, or an uploaded prescription image.
+  const hasBillContent = hasCartContent || !!patientName || !!patientAge || !!patientGender || !!image
 
   // A prescription has already been scanned once there's at least one AI row
   // (un-overridden extracted row). When true, a further scan asks whether it's
@@ -1133,7 +1149,16 @@ export default function App() {
 
               {/* Fixed bottom action bar */}
               <div className="absolute bottom-0 left-8 right-8 pb-8 pt-6 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent z-10 pointer-events-none">
-                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-end items-center pointer-events-auto">
+                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-between items-center pointer-events-auto">
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    disabled={!hasBillContent || loading}
+                    title="Clear the whole bill and start fresh"
+                    className="text-sm font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2 border border-transparent text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:bg-transparent disabled:hover:border-transparent"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Clear All
+                  </button>
                   <button
                     onClick={handleConfirmSale}
                     disabled={!hasBillableItems}
@@ -1151,6 +1176,43 @@ export default function App() {
 
         </div>
       </div>
+
+      {/* Clear-all confirmation — a full reset is destructive, so it's guarded
+          by an explicit dialog (backdrop click or Escape cancels). */}
+      {showClearConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
+          onClick={() => setShowClearConfirm(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm p-7 animate-rise"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </div>
+            <h2 className="text-lg font-black text-slate-800 text-center">Clear this bill?</h2>
+            <p className="text-sm text-slate-500 text-center mt-2 mb-6">
+              This removes all medicines and patient details. This can’t be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                autoFocus
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={resetTerminal}
+                className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/25 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
