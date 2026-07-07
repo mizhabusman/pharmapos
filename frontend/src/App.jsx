@@ -488,6 +488,14 @@ export default function App() {
   const validItemCount = cart.filter(item => !item.isUnavailable && item.billing?.billing).length
   const hasBillableItems = validItemCount > 0
 
+  // Is there anything worth keeping on screen while a scan runs? (Any row the
+  // user already worked on, vs. just the empty phantom entry row.)
+  const hasCartContent = cart.some(row => !isRowEmpty(row))
+  // Full-screen extraction animation only when there's nothing to protect.
+  // Otherwise we keep the cart visible and show a non-blocking strip instead,
+  // so manually entered rows never disappear mid-scan.
+  const showFullLoader = loading && !hasCartContent
+
   async function handleConfirmSale() {
     const billingItems = cart
       .filter(item => item.billing?.billing && !item.isUnavailable)
@@ -654,8 +662,8 @@ export default function App() {
             </div>
           )}
 
-          {/* ── AI LOADING PANEL ── */}
-          {loading && (
+          {/* ── AI LOADING PANEL (only when the cart is empty) ── */}
+          {showFullLoader && (
             <div className="flex-1 flex flex-col items-center justify-center gap-10">
 
               {/* Orbiting spinner — like a radar dish scanning for data */}
@@ -772,9 +780,28 @@ export default function App() {
             </div>
           )}
 
-          {/* Patient info + cart */}
-          {!loading && cart.length > 0 && !saleResult?.success && (
+          {/* Patient info + cart — stays visible during a scan when the user
+              already has rows, so their manual entries never vanish. */}
+          {!showFullLoader && cart.length > 0 && !saleResult?.success && (
             <div className="flex-1 flex flex-col overflow-hidden">
+
+              {/* Non-blocking "scanning" strip shown above the cart while the
+                  AI reads a new prescription (only in the has-content case). */}
+              {loading && (
+                <div className="mb-4 flex items-center gap-3 bg-white border border-green-200/70 rounded-2xl px-4 py-3 shadow-card overflow-hidden relative">
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-green-100 overflow-hidden">
+                    <div className="h-full w-1/3 bg-green-500 rounded-full animate-indeterminate" />
+                  </div>
+                  <svg className="animate-spin h-4 w-4 text-green-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <p className="text-sm font-bold text-slate-700 flex-1">
+                    {loadingMessages[loadingMsgIndex]}
+                    <span className="ml-2 font-medium text-slate-400">— your existing items are kept; new ones appear below.</span>
+                  </p>
+                </div>
+              )}
 
               {/* Patient Info + Summary */}
               <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200/70 shadow-card flex items-center justify-between mb-4">
