@@ -27,9 +27,30 @@ from app.core.config import (
     AUTH_PASSWORD,
     AUTH_SECRET_KEY,
     AUTH_TOKEN_EXPIRE_MINUTES,
+    INSECURE_SECRET_DEFAULT,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def check_startup_security() -> list[str]:
+    """
+    Return a list of security misconfigurations found at startup (empty means
+    all good). The app factory decides what to do with them: fatal in
+    production, logged warnings in development (see app.main.create_app).
+
+    Reads the module-level config values so tests that monkeypatch them (see
+    tests/conftest.py) are reflected here.
+    """
+    problems: list[str] = []
+    if not AUTH_PASSWORD:
+        problems.append("AUTH_PASSWORD is not set — logins cannot succeed.")
+    if not AUTH_SECRET_KEY or AUTH_SECRET_KEY == INSECURE_SECRET_DEFAULT:
+        problems.append(
+            "AUTH_SECRET_KEY is missing or still the insecure default — "
+            "set a strong random value."
+        )
+    return problems
 
 # auto_error=False so we can return a consistent JSON 401 instead of the
 # default terse error when the Authorization header is missing.

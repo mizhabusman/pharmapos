@@ -10,8 +10,16 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import AUTH_PASSWORD, CORS_ORIGINS, DB_PATH
-from app.core.security import get_current_user
+from app.core.config import (
+    CORS_ORIGINS,
+    DB_PATH,
+    ENVIRONMENT,
+    LOGIN_BLOCK_SECONDS,
+    LOGIN_MAX_ATTEMPTS,
+    LOGIN_WINDOW_SECONDS,
+)
+from app.core.rate_limit import LoginRateLimiter
+from app.core.security import check_startup_security, get_current_user
 from app.routers import auth, billing, extraction, health, sales, search
 from app.services.preprocessor import create_search_index, load_inventory
 
@@ -46,11 +54,25 @@ def create_app() -> FastAPI:
     else:
         logger.info("Loaded %d inventory items from %s", len(inventory), DB_PATH)
 
-    if not AUTH_PASSWORD:
-        logger.warning(
-            "AUTH_PASSWORD is not set — all logins will fail. "
-            "Set it in backend/.env before deploying."
-        )
+    # Refuse to run with insecure secrets in production; only warn in dev so
+    # local work still starts. Keeps a misconfigured server from ever facing
+    # the internet with the default signing key or no login password.
+    problems = check_startup_security()
+    if problems:
+        if ENVIRONMENT == "production":
+            raise RuntimeError(
+                "Refusing to start in production with insecure configuration: "
+                + " | ".join(problems)
+            )
+        for problem in problems:
+            logger.warning("SECURITY (fatal in production): %s", problem)
+
+    # Per-app login throttle — brute-force protection for the shared password.
+    app.state.login_limiter = LoginRateLimiter(
+        max_attempts=LOGIN_MAX_ATTEMPTS,
+        window_seconds=LOGIN_WINDOW_SECONDS,
+        block_seconds=LOGIN_BLOCK_SECONDS,
+    )
 
     # Public routes: health check + login.
     app.include_router(health.router)
