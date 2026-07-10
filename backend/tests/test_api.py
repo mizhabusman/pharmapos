@@ -29,6 +29,55 @@ def test_billing_unknown_item_returns_404(client):
     assert r.json()["detail"]["item_code"] == 999999
 
 
+def test_search_results_include_live_stock(client):
+    r = client.get("/search", params={"query": "Pantop"})
+    assert r.status_code == 200
+    top = next(x for x in r.json()["results"] if x["item_code"] == 1001)
+    assert top["stock"] == 3          # seed stock for Pantop
+    aciloc = next((x for x in r.json()["results"] if x["item_code"] == 1002), None)
+    if aciloc:
+        assert aciloc["stock"] == 0   # out of stock in the seed
+
+
+def test_confirm_sale_aggregates_duplicate_lines_over_stock(client):
+    # item 1001 has stock 3; two lines asking 2 + 2 = 4 packs must be rejected,
+    # and the reported requirement must reflect the COMBINED quantity.
+    payload = {
+        "patient_name": "Dup", "age": 20, "grand_total": 0,
+        "billing_items": [
+            {"item_code": 1001, "packs_needed": 2, "billed_qty": 30, "line_total": 300},
+            {"item_code": 1001, "packs_needed": 2, "billed_qty": 30, "line_total": 300},
+        ],
+    }
+    body = client.post("/confirm-sale", json=payload).json()
+    assert body["success"] is False
+    assert body["error"] == "Insufficient stock"
+    detail = body["details"][0]
+    assert detail["required"] == 4 and detail["available"] == 3
+
+
+def test_confirm_sale_duplicate_lines_within_stock_deduct_combined(client, db_conn):
+    # item 1003 has stock 5; two lines of 2 + 2 = 4 <= 5 succeed, deducting the
+    # combined 4 once and recording both lines.
+    payload = {
+        "patient_name": "Dup2", "age": 20, "grand_total": 0,
+        "billing_items": [
+            {"item_code": 1003, "packs_needed": 2, "billed_qty": 20, "line_total": 60},
+            {"item_code": 1003, "packs_needed": 2, "billed_qty": 20, "line_total": 60},
+        ],
+    }
+    body = client.post("/confirm-sale", json=payload).json()
+    assert body["success"] is True
+    stock = db_conn.execute(
+        "SELECT CAST(stock AS INTEGER) AS s FROM inventory WHERE item_code = 1003"
+    ).fetchone()["s"]
+    assert stock == 1                                     # 5 - (2+2)
+    lines = db_conn.execute(
+        "SELECT COUNT(*) AS n FROM bill_items WHERE bill_id = ?", (body["bill_id"],)
+    ).fetchone()["n"]
+    assert lines == 2                                     # both lines recorded
+
+
 def test_confirm_sale_enforces_server_price(client, db_conn):
     # Attempt to underpay: client claims line_total 0.01.
     payload = {

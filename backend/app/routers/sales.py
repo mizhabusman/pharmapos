@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from app.schemas.sales import SaleRequest
 from app.services.checkout import build_authoritative_bill
-from app.services.database_manager import deduct_stock, save_bill, validate_stock
+from app.services.database_manager import commit_sale, validate_stock
 
 router = APIRouter(tags=["sales"])
 
@@ -24,24 +24,25 @@ def confirm_sale(sale: SaleRequest):
     if not billing_items:
         return {"success": False, "error": "No billable items"}
 
+    # Pre-flight check → rich, per-item stock messages for the UI. The real
+    # guard against overselling lives inside commit_sale's guarded UPDATE; this
+    # just turns the common case into a friendly, itemised rejection.
     insufficient = validate_stock(billing_items)
     if insufficient:
         return {"success": False, "error": "Insufficient stock", "details": insufficient}
 
-    deduction_result = deduct_stock(billing_items)
-    if not deduction_result["success"]:
-        return {"success": False, "error": deduction_result["message"]}
-
+    # Deduct stock AND persist the bill atomically — all-or-nothing, so stock
+    # is never reduced without a recorded bill (or vice versa).
     bill_payload = {
         "patient_name": sale.patient_name,
         "age": sale.age,
         "grand_total": grand_total,
         "billing_items": billing_items,
     }
-    save_result = save_bill(bill_payload)
+    result = commit_sale(billing_items, bill_payload)
+    if not result.get("success"):
+        return {"success": False, "error": result.get("message", "Sale could not be completed")}
 
     # Surface the authoritative total so the client can reconcile its display.
-    if save_result.get("success"):
-        save_result["grand_total"] = grand_total
-
-    return save_result
+    result["grand_total"] = grand_total
+    return result

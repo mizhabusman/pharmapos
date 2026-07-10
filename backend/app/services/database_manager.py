@@ -1,7 +1,8 @@
 import logging
 import sqlite3
+from collections import defaultdict
 import pandas as pd
-from typing import List, Dict
+from typing import Dict, List
 
 from app.core.config import DB_PATH
 
@@ -45,42 +46,55 @@ def get_medicine_by_item_code(item_code: int) -> dict:
         
     return {}
 
+def _aggregate_packs(billing_items: List[Dict]) -> Dict[int, int]:
+    """
+    Sum requested packs per item_code. The same medicine can appear on more
+    than one bill line (e.g. two prescriptions), and stock must cover their
+    COMBINED quantity — checking each line independently would let a duplicate
+    slip past validation only to fail at deduction.
+    """
+    totals: Dict[int, int] = defaultdict(int)
+    for item in billing_items:
+        totals[item.get("item_code")] += int(item.get("packs_needed", 0))
+    return totals
+
+
 def validate_stock(billing_items: List[Dict]) -> List[Dict]:
     """
     Checks if there is enough pack stock for the requested items.
     Returns an empty list if valid, or a list of insufficient items.
+
+    Quantities are aggregated per item_code first, so ``required`` reflects the
+    total across every line of that medicine, not a single line.
     """
     insufficient_items = []
-    
+    requested = _aggregate_packs(billing_items)
+
     try:
         with sqlite3.connect(DB_PATH) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
-            for item in billing_items:
-                item_code = item.get("item_code")
-                # Ensure packs_needed is an integer
-                packs_needed = int(item.get("packs_needed", 0))
-                
+
+            for item_code, packs_needed in requested.items():
                 cursor.execute(
-                    "SELECT item_name, pack_name, stock FROM inventory WHERE item_code = ?", 
+                    "SELECT item_name, pack_name, stock FROM inventory WHERE item_code = ?",
                     (item_code,)
                 )
                 row = cursor.fetchone()
-                
+
                 if not row:
                     insufficient_items.append({
                         "item_code": item_code,
                         "error": "Item not found in inventory"
                     })
                     continue
-                    
+
                 # STRICT TYPE ENFORCEMENT: Convert string "13" from db to integer 13
                 try:
                     current_stock = int(row["stock"])
                 except (ValueError, TypeError):
                     current_stock = 0
-                
+
                 # Now we are safely comparing int < int
                 if current_stock < packs_needed:
                     full_name = f"{row['item_name']} {row['pack_name']}".strip()
@@ -90,87 +104,124 @@ def validate_stock(billing_items: List[Dict]) -> List[Dict]:
                         "required": packs_needed,
                         "available": current_stock
                     })
-                    
+
     except Exception as e:
         logger.error("Stock validation failed: %s", e)
         return [{"error": f"Database failure during validation: {e}"}]
-        
+
     return insufficient_items
 
-def deduct_stock(billing_items: List[Dict]) -> dict:
+
+def get_stock_for_item_codes(item_codes: List[int]) -> Dict[int, int]:
     """
-    Reduces inventory stock. Uses strict COMMIT/ROLLBACK logic.
-    Fails completely if any single item lacks stock to prevent partial updates.
+    Live pack-stock for a set of item codes: ``{item_code: stock}``.
+
+    Used to annotate search results with current availability (the in-memory
+    search index's stock is only a startup snapshot and goes stale after sales,
+    so we read the DB here). Codes that are missing or unreadable are omitted.
+    """
+    if not item_codes:
+        return {}
+
+    stock_map: Dict[int, int] = {}
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in item_codes)
+            cursor.execute(
+                f"SELECT item_code, stock FROM inventory WHERE item_code IN ({placeholders})",
+                list(item_codes),
+            )
+            for row in cursor.fetchall():
+                try:
+                    stock_map[int(row["item_code"])] = int(row["stock"])
+                except (ValueError, TypeError):
+                    stock_map[int(row["item_code"])] = 0
+    except Exception as e:
+        logger.error("Stock lookup failed: %s", e)
+
+    return stock_map
+
+def commit_sale(billing_items: List[Dict], bill_payload: dict) -> dict:
+    """
+    Atomically deduct stock AND persist the bill in a SINGLE transaction.
+
+    Either the whole sale commits (stock reduced *and* bill recorded) or none
+    of it does. Doing both in one transaction closes the integrity gap where
+    stock could be deducted in one transaction while the bill failed to save in
+    a separate one — leaving inventory reduced with no ledger entry to show for
+    it.
+
+    The stock UPDATE is guarded (``WHERE stock >= packs_needed``); a rowcount of
+    zero means the stock was taken between the pre-flight ``validate_stock``
+    check and now (a race), so the whole sale is aborted and rolled back.
+
+    Returns ``{"success": True, "bill_id": int}`` on success, or
+    ``{"success": False, "message": str}`` on any failure (nothing persisted).
     """
     try:
         with sqlite3.connect(DB_PATH) as conn:
+            # Enforce the bill_items -> bills foreign key for this transaction.
+            conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
-            
-            for item in billing_items:
-                item_code = item.get("item_code")
-                packs_needed = int(item.get("packs_needed", 0)) # Force Python int
-                
-                # We use CAST() to force SQLite to treat the CSV strings as real math numbers
+
+            # --- 1) Deduct stock (guarded; CAST handles CSV-string columns) ---
+            # Aggregate per item first: a medicine on two lines must deduct its
+            # COMBINED packs in one guarded UPDATE, otherwise the first line
+            # could succeed and the second fail on the same (now-lower) stock.
+            for item_code, packs_needed in _aggregate_packs(billing_items).items():
                 cursor.execute("""
-                    UPDATE inventory 
-                    SET stock = CAST(stock AS INTEGER) - ? 
+                    UPDATE inventory
+                    SET stock = CAST(stock AS INTEGER) - ?
                     WHERE item_code = ? AND CAST(stock AS INTEGER) >= ?
                 """, (packs_needed, item_code, packs_needed))
-                
+
                 if cursor.rowcount == 0:
-                    raise sqlite3.IntegrityError(f"Concurrency error: Insufficient stock for item {item_code} during deduction.")
-                    
-        return {"success": True, "message": "Stock updated successfully"}
-        
-    except Exception as e:
-        logger.error("Stock deduction failed: %s", e)
-        return {"success": False, "message": f"Transaction failed: {str(e)}"}
-    
-def save_bill(billing_json: dict) -> dict:
-    """
-    Stores the completed sale in the database.
-    Creates a bill header and line items in a single transaction.
-    """
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            
-            # Step 1: Insert the Bill Header
+                    # Raising here aborts the `with` block -> full rollback, so
+                    # no earlier deduction or bill row survives.
+                    raise sqlite3.IntegrityError(
+                        f"Concurrency error: Insufficient stock for item {item_code} during deduction."
+                    )
+
+            # --- 2) Insert the bill header ---
             cursor.execute("""
                 INSERT INTO bills (patient_name, age, grand_total, timestamp)
                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
             """, (
-                billing_json.get("patient_name", "Unknown"),
-                billing_json.get("age", 0),
-                billing_json.get("grand_total", 0.0)
+                bill_payload.get("patient_name", "Unknown"),
+                bill_payload.get("age", 0),
+                bill_payload.get("grand_total", 0.0),
             ))
-            
-            # Step 2: Grab the unique ID the database just created for this bill
-            bill_id = cursor.lastrowid
-            
-            # Step 3: Prepare the Line Items
-            items_data = []
-            for item in billing_json.get("billing_items", []):
-                items_data.append((
-                    bill_id,                            # The foreign key linking to the header
+            bill_id = cursor.lastrowid  # unique id the DB assigned this bill
+
+            # --- 3) Insert the line items (foreign-keyed to the header) ---
+            items_data = [
+                (
+                    bill_id,
                     item.get("item_code"),
                     item.get("packs_needed", 0),
                     item.get("billed_qty", 0),
-                    item.get("line_total", 0.0)
-                ))
-                
-            # Step 4: Bulk Insert the Line Items
+                    item.get("line_total", 0.0),
+                )
+                for item in billing_items
+            ]
             cursor.executemany("""
                 INSERT INTO bill_items (bill_id, item_code, packs_needed, billed_qty, line_total)
                 VALUES (?, ?, ?, ?, ?)
             """, items_data)
-            
+
+        # Leaving the `with` block commits on success, rolls back on exception.
         return {"success": True, "bill_id": bill_id}
-        
+
+    except sqlite3.IntegrityError as e:
+        # Expected failure (stock race) — nothing was committed.
+        logger.warning("Sale aborted, rolled back (stock/integrity): %s", e)
+        return {"success": False, "message": str(e)}
     except Exception as e:
-        logger.error("Failed to save bill: %s", e)
-        return {"success": False, "message": f"Failed to save ledger record: {str(e)}"}
-    
+        logger.error("Sale commit failed, rolled back: %s", e)
+        return {"success": False, "message": f"Transaction failed: {str(e)}"}
+
 def initialize_database():
     """
     Permanent database initialization. 
