@@ -61,6 +61,131 @@ const loadingMessages = [
   "Almost ready..."
 ]
 
+// Stock in packs at/under which the dropdown shows an amber "Only N left" hint.
+const LOW_STOCK_PACKS = 5
+
+// Reconcile stock across the WHOLE cart: the same medicine on multiple rows
+// draws from ONE stock pool. Walking rows top-to-bottom, each row can only bill
+// what's left after earlier rows took their share. Returns a per-row array
+// aligned with `cart`: { billable, packs, lineTotal, sharedNote, isOverAllocated }.
+// Pure derivation — no state mutation — so it's safe to recompute every render.
+const computeEffectiveCart = (cart) => {
+  const usedByItem = {}
+  return cart.map((item) => {
+    const billing = item.billing?.billing
+    const med = item.billing?.medicine
+    // Phantom row, un-selected rows, and own-stock-zero rows bill nothing.
+    if (!billing || !med || item.isUnavailable || item.selectedItemCode == null) {
+      return { billable: false, packs: 0, lineTotal: 0, sharedNote: null, isOverAllocated: false }
+    }
+
+    const code = item.selectedItemCode
+    const liveStock = typeof med.stock === 'number' ? med.stock : 0
+    const alreadyUsed = usedByItem[code] || 0
+    const remaining = Math.max(0, liveStock - alreadyUsed)
+    const requestedPacks = billing.packs_needed || 0
+    const packs = Math.min(requestedPacks, remaining)
+    usedByItem[code] = alreadyUsed + packs
+
+    const price = typeof med.price_inr === 'number' ? med.price_inr : 0
+    const lineTotal = Math.round(packs * price * 100) / 100
+
+    // Only annotate when an EARLIER row of the same medicine trimmed this one.
+    let sharedNote = null
+    let isOverAllocated = false
+    if (alreadyUsed > 0 && packs < requestedPacks) {
+      if (packs === 0) {
+        sharedNote = 'Stock already used by an earlier line'
+        isOverAllocated = true
+      } else {
+        sharedNote = `Only ${remaining} pack${remaining !== 1 ? 's' : ''} left after earlier line — qty adjusted`
+      }
+    }
+
+    return { billable: packs > 0, packs, lineTotal, sharedNote, isOverAllocated }
+  })
+}
+
+// Right-aligned availability badge for the manual search dropdown. Colours flip
+// to light-on-green when its row is highlighted.
+function StockTag({ stock, highlighted }) {
+  if (stock == null) return null
+  if (stock === 0) {
+    return (
+      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${highlighted ? 'bg-white/25 text-white' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+        Out of stock
+      </span>
+    )
+  }
+  if (stock <= LOW_STOCK_PACKS) {
+    return (
+      <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${highlighted ? 'bg-white/25 text-white' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
+        Only {stock} left
+      </span>
+    )
+  }
+  return (
+    <span className={`shrink-0 text-[10px] font-semibold ${highlighted ? 'text-white/80' : 'text-slate-400'}`}>
+      In stock: {stock}
+    </span>
+  )
+}
+
+// Collapse the sold rows into ONE line per medicine (item_code), summing packs
+// and money — a bill shows a product once with its combined quantity, not the
+// same product repeated. Different strengths/packs are different item_codes, so
+// they stay on separate lines. Order follows first appearance. Input is
+// [{ item, eff }] (eff = reconciled stock line); output is one entry per code.
+const aggregateSoldRows = (soldRows) => {
+  const byCode = new Map()
+  for (const { item, eff } of soldRows) {
+    const code = item.selectedItemCode
+    const existing = byCode.get(code)
+    if (existing) {
+      existing.packs += eff.packs
+      existing.line_total = Math.round((existing.line_total + eff.lineTotal) * 100) / 100
+    } else {
+      const med = item.billing.medicine
+      const packSize = med?.pack_size ?? null
+      byCode.set(code, {
+        item_code: code,
+        name: med?.product_name || item.selectedName || item.extracted,
+        pack: med?.pack_name || '',
+        pack_size: packSize,
+        unit_price: med?.price_inr ?? null,   // price per pack
+        packs: eff.packs,
+        line_total: eff.lineTotal,
+        _packSize: packSize || 1,
+      })
+    }
+  }
+  // Finalise billed_qty from the summed packs.
+  return [...byCode.values()].map(({ _packSize, ...line }) => ({
+    ...line,
+    billed_qty: line.packs * _packSize,
+  }))
+}
+
+// Freeze an immutable receipt from the AGGREGATED bill lines, stamped with the
+// server's authoritative bill_id + grand_total. Pure (everything is passed in)
+// so the downloadable JSON and the on-screen preview render from exactly the
+// same object. `lines` come from aggregateSoldRows; `saleData` is the
+// confirm-sale response; `patient` is {name, age, gender}.
+const buildBillSnapshot = (lines, saleData, patient) => ({
+  bill_id: saleData?.bill_id ?? null,
+  issued_at: new Date().toISOString(),
+  patient: {
+    name: patient.name?.trim() || 'Walk-in Patient',
+    age: patient.age,
+    gender: patient.gender || 'Unknown',
+  },
+  currency: 'INR',
+  line_items: lines.map((line, idx) => ({ s_no: idx + 1, ...line })),
+  item_count: lines.length,
+  grand_total: saleData?.grand_total
+    ?? lines.reduce((sum, line) => sum + line.line_total, 0),
+})
+
 export default function App() {
   const [imageFile, setImageFile] = useState(null)
   const [image, setImage] = useState(null)
@@ -70,6 +195,7 @@ export default function App() {
   const [patientAge, setPatientAge] = useState('')
   const [patientGender, setPatientGender] = useState('')
   const [saleResult, setSaleResult] = useState(null)
+  const [billSnapshot, setBillSnapshot] = useState(null)   // frozen receipt after a sale
   const [sessionTokens, setSessionTokens] = useState(0)
   const [sessionCost, setSessionCost] = useState(0.0)
   const [lastScanMetrics, setLastScanMetrics] = useState(null)
@@ -329,6 +455,39 @@ export default function App() {
     )))
   }
 
+  // An AI row whose extracted name matched nothing in inventory is a dead end
+  // as a dropdown. This turns it into the (familiar) manual search box,
+  // pre-filled with what the AI read, so the pharmacist can correct the query
+  // and pick the right medicine — or remove the row if it isn't stocked.
+  async function searchThisManually(i) {
+    const prefill = cart[i].extracted || ''
+    setCart(prev => withPhantomRow(prev.map((it, idx) =>
+      idx === i ? {
+        ...it,
+        isManual: true,
+        manualQuery: prefill,
+        selectedName: null,
+        selectedItemCode: null,
+        matches: [],
+        billing: null,
+        showDropdown: true,
+        highlightedIndex: 0,
+        rx_qty: it.rx_qty || '',
+        stockWarning: null,
+        isUnavailable: false
+      } : it
+    )))
+
+    // Run the search on the AI's reading up front. If it clears the confidence
+    // bar nothing else is needed; usually the pharmacist will trim/retype.
+    if (prefill.trim().length >= 2) {
+      const matches = await searchMedicine(prefill)
+      setCart(prev => prev.map((it, idx) =>
+        idx === i ? { ...it, matches, showDropdown: matches.length > 0 } : it
+      ))
+    }
+  }
+
   function switchToAuto(i) {
     setCart(prev => withPhantomRow(prev.map((it, idx) => {
       if (idx !== i) return it
@@ -504,6 +663,7 @@ export default function App() {
   function resetTerminal() {
     setCart([createEmptyRow()])
     setSaleResult(null)
+    setBillSnapshot(null)
     setImage(null)
     setImageFile(null)
     setPatientName('')
@@ -517,12 +677,20 @@ export default function App() {
     // accumulate across bills for the whole session.
   }
 
-  const grandTotal = cart.reduce((sum, item) =>
-    item.isUnavailable ? sum : sum + (item.billing?.billing?.line_total || 0), 0
-  )
+  // Reconciled per-row stock (shared across duplicate medicines). Aligned with
+  // `cart` by index; recomputed each render (cheap, pure).
+  const effective = computeEffectiveCart(cart)
 
-  const validItemCount = cart.filter(item => !item.isUnavailable && item.billing?.billing).length
+  // Totals and the confirm payload all bill the EFFECTIVE (reconciled) figures,
+  // so a duplicate medicine that over-draws stock never inflates the bill.
+  const grandTotal = effective.reduce((sum, e) => sum + e.lineTotal, 0)
+  const validItemCount = effective.filter(e => e.billable).length
   const hasBillableItems = validItemCount > 0
+
+  // AI-extracted rows the fuzzy search couldn't match to inventory. They're not
+  // billed, so we surface a gentle count near Confirm Sale to make sure Rx
+  // lines aren't silently dropped.
+  const unmatchedCount = cart.filter(item => !item.isManual && item.matches.length === 0).length
 
   // Is there anything worth keeping on screen while a scan runs? (Any row the
   // user already worked on, vs. just the empty phantom entry row.)
@@ -542,14 +710,24 @@ export default function App() {
   const hasExtractedRows = cart.some(row => !row.isManual)
 
   async function handleConfirmSale() {
-    const billingItems = cart
-      .filter(item => item.billing?.billing && !item.isUnavailable)
-      .map(item => ({
-        item_code: item.selectedItemCode,
-        packs_needed: item.billing.billing.packs_needed,
-        billed_qty: item.billing.billing.billed_qty,
-        line_total: item.billing.billing.line_total
-      }))
+    // Capture the rows being sold ONCE, pairing each with its reconciled stock
+    // line, so the request payload and the printable receipt bill exactly the
+    // effective (shared-stock) quantities — never the raw per-row request.
+    const soldRows = cart
+      .map((item, i) => ({ item, eff: effective[i] }))
+      .filter(({ eff }) => eff.billable)
+
+    // Collapse duplicate medicines into one line each (by item_code) so the
+    // request payload, DB ledger, receipt, and JSON all show a product once
+    // with its combined quantity.
+    const billLines = aggregateSoldRows(soldRows)
+
+    const billingItems = billLines.map(line => ({
+      item_code: line.item_code,
+      packs_needed: line.packs,
+      billed_qty: line.billed_qty,
+      line_total: line.line_total
+    }))
 
     try {
       const res = await authFetch(`${API}/confirm-sale`, {
@@ -565,14 +743,45 @@ export default function App() {
       })
       const data = await res.json()
       setSaleResult(data)
+
+      // On success, freeze the receipt from the rows just sold (resetTerminal
+      // clears it when the next sale starts).
+      if (data?.success) {
+        setBillSnapshot(buildBillSnapshot(billLines, data, {
+          name: patientName,
+          age: parseInt(patientAge) || null,
+          gender: patientGender,
+        }))
+      }
     } catch (err) {
       console.error("Sale failed", err)
       setErrorMsg('Network error — the sale could not be completed. Please try again.')
     }
   }
 
+  // Download the frozen receipt as a JSON file (name, age, gender, line items,
+  // totals). Built entirely client-side from billSnapshot — no server round-trip.
+  function downloadBillJson() {
+    if (!billSnapshot) return
+    const blob = new Blob([JSON.stringify(billSnapshot, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Dispensa-Bill-${billSnapshot.bill_id ?? 'draft'}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const timeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   const dateString = currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })
+
+  // When a sale is done, its receipt gets a fixed issue date/time (from the
+  // frozen snapshot, not the live clock).
+  const receiptDate = billSnapshot ? new Date(billSnapshot.issued_at) : null
+  const receiptDateStr = receiptDate ? receiptDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''
+  const receiptTimeStr = receiptDate ? receiptDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
 
   // Gate the whole app behind login — no token, no POS.
   if (!token) {
@@ -805,26 +1014,120 @@ export default function App() {
             </div>
           )}
 
-          {/* Sale success */}
+          {/* Sale success — confirmation + printable receipt preview + actions.
+              Scrollable so a long receipt never gets clipped by the panel. */}
           {!loading && saleResult?.success && (
-            <div className="bg-white border border-slate-200/70 shadow-card-lg rounded-3xl p-12 text-center mb-6 max-w-lg mx-auto mt-12 animate-rise">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="flex-1 overflow-y-auto">
+              <div className="bg-white border border-slate-200/70 shadow-card-lg rounded-3xl p-8 max-w-md mx-auto my-8 animate-rise">
+
+                {/* Confirmation header */}
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-800">Sale Complete</h2>
+                  <p className="text-slate-500 font-medium mt-1">Receipt #{saleResult.bill_id}</p>
+                </div>
+
+                {/* ── Structured bill preview (standard small-bill layout) ── */}
+                {billSnapshot && (
+                  <div className="mt-6 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-6 text-slate-700">
+
+                    {/* Store header */}
+                    <div className="text-center pb-3">
+                      <p className="text-lg font-black text-slate-800 tracking-tight">Dispensa</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                        Pharmacy · Tax Invoice
+                      </p>
+                    </div>
+
+                    {/* Bill meta */}
+                    <div className="flex justify-between text-[11px] font-semibold text-slate-500 border-t border-dashed border-slate-300 pt-3">
+                      <span>Bill #{billSnapshot.bill_id ?? '—'}</span>
+                      <span className="text-right">{receiptDateStr} · {receiptTimeStr}</span>
+                    </div>
+
+                    {/* Patient */}
+                    <div className="text-[11px] font-semibold text-slate-500 mt-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 uppercase tracking-wider">Patient</span>
+                        <span className="text-slate-700 font-bold text-right truncate ml-3">{billSnapshot.patient.name}</span>
+                      </div>
+                      <div className="flex justify-between mt-0.5">
+                        <span className="text-slate-400 uppercase tracking-wider">Age / Gender</span>
+                        <span className="text-slate-600 text-right">
+                          {billSnapshot.patient.age ?? '—'} · {billSnapshot.patient.gender}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Line-item column header */}
+                    <div className="grid grid-cols-[1.25rem_1fr_auto] gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 border-t border-dashed border-slate-300 mt-3 pt-2">
+                      <span>#</span>
+                      <span>Item</span>
+                      <span className="text-right">Amount</span>
+                    </div>
+
+                    {/* Line items */}
+                    <div className="divide-y divide-slate-200/70">
+                      {billSnapshot.line_items.map((li) => (
+                        <div key={li.s_no} className="grid grid-cols-[1.25rem_1fr_auto] gap-2 py-2 items-start">
+                          <span className="text-[11px] font-bold text-slate-400 tabular-nums">{li.s_no}</span>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-bold text-slate-800 leading-tight truncate" title={li.name}>{li.name}</p>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              {li.packs} pack{li.packs !== 1 ? 's' : ''}
+                              {li.unit_price != null && <> × ₹{li.unit_price.toFixed(2)}</>}
+                              {li.pack && <span className="text-slate-300"> · {li.pack}</span>}
+                            </p>
+                          </div>
+                          <span className="text-[12px] font-black text-slate-800 tabular-nums text-right">
+                            ₹{li.line_total.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex justify-between items-center border-t border-dashed border-slate-300 mt-1 pt-3">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        {billSnapshot.item_count} item{billSnapshot.item_count !== 1 ? 's' : ''}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total</span>
+                        <span className="text-2xl font-black text-green-600 tabular-nums">₹{billSnapshot.grand_total.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-center text-[10px] font-semibold text-slate-400 mt-4 tracking-wide">
+                      Thank You · Visit Again
+                    </p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-6 flex gap-3">
+                  <button
+                    onClick={downloadBillJson}
+                    disabled={!billSnapshot}
+                    title="Download this bill as a JSON file"
+                    className="flex-1 flex items-center justify-center gap-2 border border-slate-200 bg-white text-slate-700 hover:border-green-400 hover:text-green-700 font-bold py-3.5 rounded-xl text-sm tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download JSON
+                  </button>
+                  <button
+                    onClick={resetTerminal}
+                    className="flex-1 btn-green text-white px-6 py-3.5 rounded-xl font-bold text-sm tracking-wide"
+                  >
+                    Start New Sale
+                  </button>
+                </div>
               </div>
-              <h2 className="text-3xl font-black text-slate-800 mb-2">Sale Complete</h2>
-              <p className="text-slate-500 font-medium mb-6">Receipt #{saleResult.bill_id}</p>
-              <div className="bg-slate-50 rounded-2xl py-6 px-4 mb-8">
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Amount Paid</p>
-                <p className="text-5xl font-black text-green-600">₹{(saleResult.grand_total ?? grandTotal).toFixed(2)}</p>
-              </div>
-              <button
-                onClick={resetTerminal}
-                className="w-full btn-green text-white px-8 py-4 rounded-xl font-bold text-lg"
-              >
-                Start New Sale
-              </button>
             </div>
           )}
 
@@ -998,7 +1301,7 @@ export default function App() {
 
                     <div className="col-span-4 min-h-[80px] flex flex-col justify-between gap-1 py-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded uppercase tracking-wider text-[9px] font-black ${item.isManual ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-green-50 text-green-700 border-green-100/50'}`}>
+                        <span className={`inline-flex items-center gap-1 border px-2 py-0.5 rounded uppercase tracking-wider text-[9px] font-black ${(item.isManual || item.matches.length === 0) ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-green-50 text-green-700 border-green-100/50'}`}>
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {item.isManual ? (
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -1017,14 +1320,14 @@ export default function App() {
                               ↩ Restore AI
                             </button>
                           )
-                        ) : (
+                        ) : item.matches.length > 0 ? (
                           <button
                             onClick={() => switchToManual(i)}
                             className="text-[10px] text-slate-500 hover:bg-slate-100 font-bold border border-transparent hover:border-slate-200 rounded px-2 py-1 transition-colors uppercase tracking-wide"
                           >
                             Edit
                           </button>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex items-center justify-center">
@@ -1057,15 +1360,16 @@ export default function App() {
                                         idx === i ? { ...it, highlightedIndex: j } : it
                                       ))}
                                       onClick={() => selectManualMatch(i, j)}
-                                      className={`w-full text-left px-3 py-2 text-sm transition-colors ${item.highlightedIndex === j ? 'bg-green-600 text-white' : 'text-slate-700'}`}
+                                      className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center justify-between gap-3 ${item.highlightedIndex === j ? 'bg-green-600 text-white' : 'text-slate-700'}`}
                                     >
-                                      {match.matched_text}
+                                      <span className="truncate">{match.matched_text}</span>
+                                      <StockTag stock={match.stock} highlighted={item.highlightedIndex === j} />
                                     </button>
                                   ))}
                                 </div>
                               )}
                             </>
-                          ) : (
+                          ) : item.matches.length > 0 ? (
                             /* AI-matched row — same themed dropdown as gender/manual */
                             <SelectField
                               value={item.matches[item.selectedIndex]?.matched_text || ''}
@@ -1078,20 +1382,44 @@ export default function App() {
                               disabled={item.isUnavailable}
                               className="w-full"
                             />
+                          ) : (
+                            /* AI read a name but nothing in inventory cleared the
+                               confidence bar. Rather than a dead, empty dropdown,
+                               flag it and offer a one-click manual search. */
+                            <div className="flex flex-col items-start gap-1.5 py-0.5">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-700">
+                                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                No inventory match
+                              </div>
+                              <button
+                                onClick={() => searchThisManually(i)}
+                                title={`Search the inventory for "${item.extracted}"`}
+                                className="inline-flex items-center gap-1.5 border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold px-3 py-1.5 rounded-lg text-[11px] tracking-wide transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                Search inventory
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
 
                       <div className="min-h-[1.2rem]">
-                        {item.stockWarning && !item.isUnavailable ? (
-                          <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg text-[10px] text-amber-700 font-semibold">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            <span>{item.stockWarning}</span>
-                          </div>
-                        ) : item.isUnavailable ? (
+                        {item.isUnavailable ? (
                           <div className="flex items-center gap-2 text-[10px] text-rose-600 font-semibold">
                             <span className="bg-rose-50 border border-rose-100 px-2 py-0.5 rounded uppercase tracking-wide">Out of Stock</span>
                             <span className="text-slate-400 italic">Removed from bill</span>
+                          </div>
+                        ) : effective[i].sharedNote ? (
+                          /* Same medicine on another row already claimed some/all of the stock. */
+                          <div className={`flex items-center gap-2 px-2 py-1 rounded-lg text-[10px] font-semibold ${effective[i].isOverAllocated ? 'bg-rose-50 border border-rose-100 text-rose-600' : 'bg-amber-50 border border-amber-100 text-amber-700'}`}>
+                            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <span>{effective[i].sharedNote}</span>
+                          </div>
+                        ) : item.stockWarning ? (
+                          <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg text-[10px] text-amber-700 font-semibold">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <span>{item.stockWarning}</span>
                           </div>
                         ) : (
                           <div className="h-4" />
@@ -1116,8 +1444,8 @@ export default function App() {
                     </div>
 
                     <div className="col-span-2 flex flex-col items-center justify-center">
-                      <span className={`text-base font-black ${item.isUnavailable ? 'text-slate-300' : 'text-slate-800'}`}>
-                        {item.isUnavailable ? '—' : (item.billing?.billing?.packs_needed ?? '—')}
+                      <span className={`text-base font-black ${item.isUnavailable || effective[i].isOverAllocated ? 'text-slate-300' : 'text-slate-800'}`}>
+                        {item.isUnavailable ? '—' : (item.billing?.billing ? effective[i].packs : '—')}
                       </span>
                       {typeof item.billing?.medicine?.stock === 'number' && (
                         <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
@@ -1126,8 +1454,8 @@ export default function App() {
                       )}
                     </div>
 
-                    <div className={`col-span-2 flex items-center justify-end text-lg font-black tracking-tight ${item.isUnavailable ? 'text-slate-300' : 'text-slate-800'}`}>
-                      {item.isUnavailable ? '—' : item.billing?.billing?.line_total ? `₹${item.billing.billing.line_total.toFixed(2)}` : '—'}
+                    <div className={`col-span-2 flex items-center justify-end text-lg font-black tracking-tight ${item.isUnavailable || effective[i].isOverAllocated ? 'text-slate-300' : 'text-slate-800'}`}>
+                      {item.isUnavailable ? '—' : (effective[i].billable ? `₹${effective[i].lineTotal.toFixed(2)}` : '—')}
                     </div>
 
                     <div className="col-span-1 text-center">
@@ -1149,7 +1477,14 @@ export default function App() {
 
               {/* Fixed bottom action bar */}
               <div className="absolute bottom-0 left-8 right-8 pb-8 pt-6 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent z-10 pointer-events-none">
-                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 flex justify-between items-center pointer-events-auto">
+                <div className="bg-white p-4 rounded-2xl shadow-card-lg border border-slate-200/70 pointer-events-auto">
+                  {unmatchedCount > 0 && (
+                    <div className="mb-3 flex items-center gap-2 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      <span>{unmatchedCount} prescription item{unmatchedCount > 1 ? 's' : ''} couldn’t be matched to inventory — search or remove {unmatchedCount > 1 ? 'them' : 'it'} above.</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
                   <button
                     onClick={() => setShowClearConfirm(true)}
                     disabled={!hasBillContent || loading}
@@ -1168,6 +1503,7 @@ export default function App() {
                     <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>
                     ₹{grandTotal.toFixed(2)}
                   </button>
+                  </div>
                 </div>
               </div>
 
