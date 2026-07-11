@@ -7,7 +7,7 @@
 // Brand palette: green #22A45D, navy #0E2A47. Uses gradients + a gloss
 // highlight so it reads as premium at any size.
 
-export function LogoIcon({ className = 'w-9 h-9', title = 'Dispensa' }) {
+export function LogoIcon({ className = 'w-9 h-9', title = 'Pharmacy Management' }) {
   return (
     <svg
       className={className}
@@ -62,20 +62,15 @@ export function LogoIcon({ className = 'w-9 h-9', title = 'Dispensa' }) {
   )
 }
 
-export function LogoLockup({ iconClass = 'w-11 h-11', subtitle = true, tone = 'light', className = '' }) {
-  const wordmark = tone === 'dark' ? 'text-[#0E2A47]' : 'text-white'
-  const subEnd = tone === 'dark' ? 'text-slate-500' : 'text-slate-400'
+export function LogoLockup({ iconClass = 'w-11 h-11', tone = 'light', className = '' }) {
+  const mainText = tone === 'dark' ? 'text-slate-800' : 'text-white'
+  const eyebrow = tone === 'dark' ? 'text-green-600' : 'text-green-300'
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <LogoIcon className={iconClass} />
       <div className="leading-none">
-        <h1 className={`text-[26px] font-black tracking-tight ${wordmark}`}>Dispensa</h1>
-        {subtitle && (
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] mt-1.5">
-            <span className="text-[#0D9488]">AI-Powered</span>
-            <span className={subEnd}> Pharmacy Management</span>
-          </p>
-        )}
+        <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${eyebrow}`}>AI-Powered</p>
+        <h1 className={`text-[19px] font-black tracking-tight mt-1 ${mainText}`}>Pharmacy Management</h1>
       </div>
     </div>
   )

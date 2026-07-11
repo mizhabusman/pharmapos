@@ -29,18 +29,14 @@ export default function Login({ apiBase, onSuccess }) {
         {/* Brand */}
         <div className="flex flex-col items-center mb-8">
           <div className="relative mb-4">
-            {/* pulsing ring while signing in */}
-            {busy && (
-              <span className="absolute inset-0 rounded-2xl bg-[#0D9488]/25 animate-ping" />
-            )}
             <div className="relative bg-white border border-slate-200 p-3 rounded-2xl shadow-md">
               <LogoIcon className="w-12 h-12" />
             </div>
           </div>
-          <h1 className="text-3xl font-black text-[#0E2A47] tracking-tight">Dispensa</h1>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Pharmacy Management</h1>
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] mt-1.5">
-            <span className="text-[#0D9488]">AI-Powered</span>
-            <span className="text-slate-500"> Pharmacy Management</span>
+            <span className="text-green-600">AI-Powered</span>
+            <span className="text-slate-500"> Point of Sale</span>
           </p>
         </div>
 
@@ -52,7 +48,7 @@ export default function Login({ apiBase, onSuccess }) {
           {/* indeterminate loading bar */}
           {busy && (
             <div className="absolute top-0 left-0 right-0 h-1 bg-slate-100 overflow-hidden">
-              <div className="h-full w-1/3 bg-[#0D9488] rounded-full animate-indeterminate" />
+              <div className="h-full w-1/3 bg-green-600 rounded-full animate-indeterminate" />
             </div>
           )}
 
@@ -60,7 +56,7 @@ export default function Login({ apiBase, onSuccess }) {
             Password
           </label>
 
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:border-[#0D9488] focus-within:ring-2 focus-within:ring-[#0D9488]/25 focus-within:bg-white transition-all">
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-600/25 focus-within:bg-white transition-all">
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
@@ -75,7 +71,7 @@ export default function Login({ apiBase, onSuccess }) {
               onClick={() => setShowPassword(s => !s)}
               tabIndex={-1}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
-              className="px-3 text-slate-400 hover:text-[#0D9488] transition-colors"
+              className="px-3 text-slate-400 hover:text-green-600 transition-colors"
             >
               {showPassword ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

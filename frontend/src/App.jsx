@@ -767,7 +767,7 @@ export default function App() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Dispensa-Bill-${billSnapshot.bill_id ?? 'draft'}.json`
+    a.download = `Pharmacy-Bill-${billSnapshot.bill_id ?? 'draft'}.json`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -802,7 +802,7 @@ export default function App() {
           <button
             onClick={handleLogout}
             title="Log out"
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+            className="flex items-center gap-2 text-slate-600 hover:text-green-800 bg-slate-100 hover:bg-green-50 border border-slate-200 hover:border-green-200 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wide transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -816,15 +816,15 @@ export default function App() {
       <div className="flex flex-1 gap-0 overflow-hidden">
 
         {/* LEFT PANEL */}
-        <div className="w-[20%] bg-gradient-to-b from-white to-slate-50 border-r border-slate-200 p-7 flex flex-col gap-6 overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(15,23,42,0.04)]">
-          <h2 className="font-bold text-slate-500 uppercase tracking-widest text-xs flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#0D9488] shadow-[0_0_10px_rgba(13,148,136,0.35)]"></span>
+        <div className="w-[20%] bg-white border-r border-slate-200 p-7 flex flex-col gap-6 overflow-y-auto relative z-10 shadow-[4px_0_24px_rgba(15,23,42,0.04)]">
+          <h2 className="font-bold text-slate-500 uppercase tracking-wide text-xs flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-600"></span>
             Upload Prescription
           </h2>
 
           <div>
-            <label className="group flex flex-col items-center justify-center gap-2 w-full py-6 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:border-[#0D9488] hover:bg-green-50/60 cursor-pointer transition-all">
-              <svg className="w-7 h-7 text-slate-400 group-hover:text-[#0D9488] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <label className="group flex flex-col items-center justify-center gap-2 w-full py-6 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:border-green-600 hover:bg-green-50/60 cursor-pointer transition-all">
+              <svg className="w-7 h-7 text-slate-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
@@ -870,7 +870,7 @@ export default function App() {
             </button>
           ) : hasExtractedRows ? (
             <div className="flex flex-col gap-2.5">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                 Already scanned — scan again as:
               </p>
               <button
@@ -898,14 +898,17 @@ export default function App() {
               disabled={!imageFile}
               className="w-full btn-green text-white font-bold py-3.5 rounded-xl text-sm tracking-wide flex justify-center items-center gap-2"
             >
-              🔍 Extract Data
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Extract Data
             </button>
           )}
 
           {lastScanMetrics && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mt-auto">
-              <h3 className="font-bold text-[10px] text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <svg className="w-3.5 h-3.5 text-[#0D9488]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <h3 className="font-bold text-[10px] text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Token Metrics
@@ -915,7 +918,7 @@ export default function App() {
                 <span className="font-bold text-slate-800">
                   {lastScanMetrics.total_tokens?.toLocaleString()} tok
                   <span className="text-slate-300 mx-1">|</span>
-                  <span className="text-[#0D9488] font-mono">₹{lastScanMetrics.cost_inr?.toFixed(4)}</span>
+                  <span className="text-green-600 font-mono">₹{lastScanMetrics.cost_inr?.toFixed(4)}</span>
                 </span>
               </div>
               <div className="flex justify-between items-center border-t border-slate-200 pt-2.5 text-xs">
@@ -923,7 +926,7 @@ export default function App() {
                 <span className="font-black text-slate-800">
                   {sessionTokens.toLocaleString()} tok
                   <span className="text-slate-300 mx-1">|</span>
-                  <span className="text-[#0D9488] font-mono text-sm">₹{sessionCost.toFixed(4)}</span>
+                  <span className="text-green-600 font-mono text-sm">₹{sessionCost.toFixed(4)}</span>
                 </span>
               </div>
             </div>
@@ -952,35 +955,21 @@ export default function App() {
 
           {/* ── AI LOADING PANEL (only when the cart is empty) ── */}
           {showFullLoader && (
-            <div className="flex-1 flex flex-col items-center justify-center gap-10">
+            <div className="flex-1 flex flex-col gap-6 pt-6">
 
-              {/* Orbiting spinner — like a radar dish scanning for data */}
-              <div className="relative w-28 h-28 flex items-center justify-center">
-                {/* Center icon */}
-                <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center shadow-xl shadow-green-900/40 z-10">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                {/* Inner ring */}
-                <div className="absolute inset-0 rounded-full border-4 border-green-500/20 border-t-green-500 animate-spin" />
-                {/* Outer ring — spins the other way, like two gears */}
-                <div
-                  className="absolute -inset-4 rounded-full border-2 border-green-400/10 border-t-green-400/50 animate-spin"
-                  style={{ animationDuration: '3s', animationDirection: 'reverse' }}
-                />
-              </div>
-
-              {/* Status message — rotates every 2s */}
-              <div className="text-center">
-                <p className="text-xl font-bold text-slate-700 transition-all duration-500 min-h-[28px]">
+              {/* Status header — a quiet spinner + the rotating message. */}
+              <div className="flex items-center gap-3">
+                <svg className="animate-spin h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <p className="text-base font-semibold text-slate-700 transition-all duration-500">
                   {loadingMessages[loadingMsgIndex]}
                 </p>
-                <p className="text-sm text-slate-400 mt-2 font-medium">Powered by Gemini AI</p>
               </div>
 
-              {/* Skeleton rows — like scaffolding showing where results will appear */}
-              <div className="w-full max-w-3xl space-y-3">
+              {/* Skeleton rows — placeholders where results will appear. */}
+              <div className="w-full space-y-3">
                 {[1, 2, 3].map(n => (
                   <div
                     key={n}
@@ -1037,9 +1026,9 @@ export default function App() {
 
                     {/* Store header */}
                     <div className="text-center pb-3">
-                      <p className="text-lg font-black text-slate-800 tracking-tight">Dispensa</p>
+                      <p className="text-base font-black text-slate-800 tracking-tight">Pharmacy Management</p>
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                        Pharmacy · Tax Invoice
+                        AI-Powered · Tax Invoice
                       </p>
                     </div>
 
@@ -1064,7 +1053,7 @@ export default function App() {
                     </div>
 
                     {/* Line-item column header */}
-                    <div className="grid grid-cols-[1.25rem_1fr_auto] gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 border-t border-dashed border-slate-300 mt-3 pt-2">
+                    <div className="grid grid-cols-[1.25rem_1fr_auto] gap-2 text-[9px] font-black uppercase tracking-wide text-slate-400 border-t border-dashed border-slate-300 mt-3 pt-2">
                       <span>#</span>
                       <span>Item</span>
                       <span className="text-right">Amount</span>
@@ -1092,11 +1081,11 @@ export default function App() {
 
                     {/* Total */}
                     <div className="flex justify-between items-center border-t border-dashed border-slate-300 mt-1 pt-3">
-                      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                         {billSnapshot.item_count} item{billSnapshot.item_count !== 1 ? 's' : ''}
                       </div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Total</span>
                         <span className="text-2xl font-black text-green-600 tabular-nums">₹{billSnapshot.grand_total.toFixed(2)}</span>
                       </div>
                     </div>
@@ -1193,7 +1182,7 @@ export default function App() {
 
                   {/* Name */}
                   <div className="flex items-center gap-2 flex-1">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                    <label className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">
                       Name
                     </label>
 
@@ -1207,7 +1196,7 @@ export default function App() {
 
                   {/* Age */}
                   <div className="flex items-center gap-2">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                    <label className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">
                       Age
                     </label>
 
@@ -1225,7 +1214,7 @@ export default function App() {
 
                   {/* Gender */}
                   <div className="flex items-center gap-2">
-                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                    <label className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">
                       Gender
                     </label>
 
@@ -1241,10 +1230,10 @@ export default function App() {
                 </div>
 
                 {/* Right Section - Summary */}
-                <div className="pl-6 min-w-[190px] bg-gradient-to-br from-green-50 to-green-100/70 border border-green-200/80 rounded-xl px-4 py-3">
+                <div className="pl-6 min-w-[190px] bg-green-50 border border-green-100 rounded-xl px-4 py-3">
 
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                       Grand Total:
                     </span>
 
@@ -1254,7 +1243,7 @@ export default function App() {
                   </div>
 
                   <div className="flex justify-between items-center mt-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                       Items:
                     </span>
 
@@ -1274,7 +1263,7 @@ export default function App() {
                   matches the label pharmacists already see on printed bills and
                   billing software (Tally/Marg/GST formats), not a generic "#". */}
               <div ref={rowsScrollRef} className="overflow-y-auto flex-1 pr-2 pb-28">
-                <div className="grid grid-cols-[2.75rem_repeat(12,minmax(0,1fr))] gap-2 px-4 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card sticky top-0 z-10">
+                <div className="grid grid-cols-[2.75rem_repeat(12,minmax(0,1fr))] gap-2 px-4 py-2.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-wide border-b border-slate-200/70 mb-2.5 bg-white rounded-xl shadow-card sticky top-0 z-10">
                   <div className="text-center tracking-normal">S.No</div>
                   <div className="col-span-4">Medicine</div>
                   <div className="col-span-2 text-center">Qty</div>
@@ -1448,7 +1437,7 @@ export default function App() {
                         {item.isUnavailable ? '—' : (item.billing?.billing ? effective[i].packs : '—')}
                       </span>
                       {typeof item.billing?.medicine?.stock === 'number' && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mt-0.5">
                           In Stock: {item.billing.medicine.stock}
                         </span>
                       )}

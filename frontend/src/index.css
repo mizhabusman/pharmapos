@@ -6,19 +6,42 @@
 /*  neutrals use Tailwind defaults (cool gray).                         */
 /* ------------------------------------------------------------------ */
 @theme {
-  /* Accent — teal (Tailwind teal ramp) — pops on both the dark navy
-     sidebar and the white cards, and harmonises with the green logo. */
-  --color-green-50:  #F0FDFA;
-  --color-green-100: #CCFBF1;
-  --color-green-200: #99F6E4;
-  --color-green-300: #5EEAD4;
-  --color-green-400: #2DD4BF;
-  --color-green-500: #14B8A6;
-  --color-green-600: #0D9488;
-  --color-green-700: #0F766E;
-  --color-green-800: #115E59;
-  --color-green-900: #134E4A;
-  --color-green-950: #042F2E;
+  /* Typeface — Plus Jakarta Sans: a refined geometric-humanist sans that
+     reads as bespoke/premium (deliberately not the default system stack).
+     Remapping --font-sans restyles every `font-sans` element app-wide. */
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  /* Accent — muted olive / sage green (warm, earthy). Remapping the `green`
+     ramp recolours every accent app-wide to sit on the warm cream canvas. */
+  --color-green-50:  #F4F6EC;
+  --color-green-100: #E7ECD6;
+  --color-green-200: #D2DCB6;
+  --color-green-300: #B7C58E;
+  --color-green-400: #9DAD68;
+  --color-green-500: #84944C;
+  --color-green-600: #6B7B3C;
+  --color-green-700: #566430;
+  --color-green-800: #454F28;
+  --color-green-900: #3A4124;
+  --color-green-950: #212611;
+
+  /* Neutrals — warm ivory surfaces + warm-gray ("stone") ramp so cards,
+     borders and text all sit naturally on the cream canvas instead of the
+     old cool white/slate that clashed with it. Remapping `white` warms every
+     card at once; remapping `slate` warms every gray. */
+  --color-white:     #F8F5EF;
+  --color-slate-50:  #EDE9DE;
+  --color-slate-100: #E6E1D5;
+  --color-slate-200: #D9D3C5;
+  --color-slate-300: #C7C1B1;
+  --color-slate-400: #A39D8E;
+  --color-slate-500: #7C776B;
+  --color-slate-600: #5D594F;
+  --color-slate-700: #46433B;
+  --color-slate-800: #312F29;
+  --color-slate-900: #22201C;
+  --color-slate-950: #14120F;
 }
 
 /* ------------------------------------------------------------------ */
@@ -26,9 +49,11 @@
 /* ------------------------------------------------------------------ */
 html, body, #root { height: 100%; }
 body {
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;   /* subtle tightening reads more refined */
 }
 
 /* ------------------------------------------------------------------ */
@@ -40,31 +65,28 @@ body {
   background: linear-gradient(160deg, #24344A 0%, #1B2838 58%, #141E2B 100%);
 }
 
-/* Working canvas — light cool gray with a whisper of blue. */
+/* Working canvas — a warm, flat cream/ivory. */
 .bg-app-canvas {
-  background:
-    radial-gradient(1100px 560px at 100% -8%, rgba(37, 99, 235, 0.05), transparent 60%),
-    #F1F3F6;
+  background-color: #EFEBDF;
 }
 
-/* Primary button — muted deep-teal gradient (calm, not a highlighter). */
+/* Primary button — solid, muted deep-teal. Flat and crisp (no gradient,
+   gloss, or coloured glow) reads more bespoke than the glossy default. */
 .btn-green {
-  background: linear-gradient(180deg, #0F9B8C 0%, #0D8478 55%, #0F6E66 100%);
-  box-shadow:
-    0 8px 18px -8px rgba(13, 132, 120, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+  background-color: #5E6C36;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.10);
+  transition: background-color .16s ease, transform .12s ease;
 }
-.btn-green:hover:not(:disabled)  { filter: brightness(1.06); }
-.btn-green:active:not(:disabled) { filter: brightness(0.97); transform: translateY(1px); }
-.btn-green:disabled { filter: saturate(0.35) opacity(0.55); box-shadow: none; cursor: not-allowed; }
+.btn-green:hover:not(:disabled)  { background-color: #51602F; }
+.btn-green:active:not(:disabled) { background-color: #46522A; transform: translateY(0.5px); }
+.btn-green:disabled { filter: grayscale(0.35) opacity(0.5); box-shadow: none; cursor: not-allowed; }
 
 /* Layered card shadows (cool-tinted). */
 .shadow-card {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px -6px rgba(15, 23, 42, 0.10);
 }
 .shadow-card-lg {
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 16px 40px -12px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 10px 30px -14px rgba(15, 23, 42, 0.12);
 }
 
 /* ------------------------------------------------------------------ */
