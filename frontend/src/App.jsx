@@ -278,6 +278,16 @@ export default function App() {
     setErrorMsg(null)
   }
 
+  // Remove the uploaded image so a different one can be chosen. The cart is
+  // left intact (same principle as upload — scanned/manual rows survive).
+  function clearImage() {
+    if (image) URL.revokeObjectURL(image)
+    setImage(null)
+    setImageFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    setErrorMsg(null)
+  }
+
   async function searchMedicine(name) {
     try {
       const res = await authFetch(`${API}/search?query=${encodeURIComponent(name)}`)
@@ -847,8 +857,17 @@ export default function App() {
           </div>
 
           {image && (
-            <div className="border border-slate-200 p-1.5 rounded-2xl bg-white shadow-inner">
+            <div className="relative border border-slate-200 p-1.5 rounded-2xl bg-white shadow-inner">
               <img src={image} alt="Preview" className="w-full rounded-xl object-contain max-h-56 bg-slate-100" />
+              <button
+                onClick={clearImage}
+                disabled={loading}
+                title="Remove image"
+                aria-label="Remove uploaded image"
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-rose-600 text-white flex items-center justify-center shadow-md backdrop-blur-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           )}
 
