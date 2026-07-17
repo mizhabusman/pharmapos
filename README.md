@@ -87,27 +87,15 @@ npm run dev                       # serves on http://localhost:5173
 
 ## API endpoints
 
-| Method | Path            | Auth | Purpose                                            |
-|--------|-----------------|------|----------------------------------------------------|
-| GET    | `/`             | —    | Health check                                       |
-| POST   | `/auth/login`   | —    | Exchange the shared password for a bearer token    |
-| GET    | `/auth/me`      | ✅   | Validate the current token                         |
-| POST   | `/extract`      | ✅   | Prescription image → patient + medicines (Gemini)  |
-| GET    | `/search`       | ✅   | Fuzzy medicine search against inventory            |
-| GET    | `/billing`      | ✅   | Pack-based billing for an item + prescribed qty    |
-| POST   | `/confirm-sale` | ✅   | Validate stock, deduct inventory, persist the bill |
+All endpoints are public (no authentication in the first release).
 
-## Authentication
-
-The app is gated behind a **single shared password** (`AUTH_PASSWORD`). The
-frontend shows a login screen; on success it stores a signed JWT and sends it
-as a bearer token on every API call. Protected endpoints reject requests
-without a valid token.
-
-Set `AUTH_PASSWORD` and a strong `AUTH_SECRET_KEY` in `backend/.env` (see
-`.env.example`). To upgrade to per-pharmacist accounts later, only
-`verify_credentials()` in `backend/app/core/security.py` needs to change — the
-token layer, route guards, and frontend stay the same.
+| Method | Path            | Purpose                                            |
+|--------|-----------------|----------------------------------------------------|
+| GET    | `/`             | Health check                                       |
+| POST   | `/extract`      | Prescription image → patient + medicines (Gemini)  |
+| GET    | `/search`       | Fuzzy medicine search against inventory            |
+| GET    | `/billing`      | Pack-based billing for an item + prescribed qty    |
+| POST   | `/confirm-sale` | Validate stock, deduct inventory, persist the bill |
 
 ## Configuration
 
