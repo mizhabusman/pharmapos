@@ -799,13 +799,14 @@ export default function App() {
             Upload Prescription
           </h2>
 
-          <div>
+          {!image ? (
+            /* Nothing uploaded yet — the upload dropzone. */
             <label className="group flex flex-col items-center justify-center gap-2 w-full py-6 px-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 hover:border-green-600 hover:bg-green-50/60 cursor-pointer transition-all">
               <svg className="w-7 h-7 text-slate-400 group-hover:text-green-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
               <span className="text-xs font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
-                {imageFile ? 'Change image' : 'Choose prescription image'}
+                Choose prescription image
               </span>
               <span className="text-[10px] text-slate-400">JPG, PNG · tap to upload</span>
               <input
@@ -816,25 +817,27 @@ export default function App() {
                 className="hidden"
               />
             </label>
-            {imageFile && (
-              <p className="mt-2 text-[11px] text-slate-500 font-medium truncate" title={imageFile.name}>
-                {imageFile.name}
-              </p>
-            )}
-          </div>
-
-          {image && (
-            <div className="relative border border-slate-200 p-1.5 rounded-2xl bg-white shadow-inner">
-              <img src={image} alt="Preview" className="w-full rounded-xl object-contain max-h-56 bg-slate-100" />
-              <button
-                onClick={clearImage}
-                disabled={loading}
-                title="Remove image"
-                aria-label="Remove uploaded image"
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-rose-600 text-white flex items-center justify-center shadow-md backdrop-blur-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+          ) : (
+            /* Uploaded — the preview replaces the dropzone; ✕ removes it and
+               brings the dropzone back so a different image can be chosen. */
+            <div>
+              {imageFile && (
+                <p className="mb-2 text-[11px] text-slate-500 font-medium truncate" title={imageFile.name}>
+                  {imageFile.name}
+                </p>
+              )}
+              <div className="relative border border-slate-200 p-1.5 rounded-2xl bg-white shadow-inner">
+                <img src={image} alt="Preview" className="w-full rounded-xl object-contain max-h-56 bg-slate-100" />
+                <button
+                  onClick={clearImage}
+                  disabled={loading}
+                  title="Remove image"
+                  aria-label="Remove uploaded image"
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/60 hover:bg-rose-600 text-white flex items-center justify-center shadow-md backdrop-blur-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
             </div>
           )}
 
