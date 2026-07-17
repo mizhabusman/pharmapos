@@ -32,12 +32,6 @@ load_dotenv(os.path.join(BACKEND_DIR, ".env"))
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Deployment environment: "development" (default) or "production". In
-# production the app refuses to boot with insecure/missing secrets; in
-# development the same problems are logged as warnings so local work still runs
-# (see app.main.create_app + core/security.check_startup_security).
-ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
-
 # ---------------------------------------------------------------------------
 # Gemini model + pricing (used to report per-scan token cost metrics)
 # ---------------------------------------------------------------------------
@@ -50,27 +44,3 @@ INR_CONVERSION_RATE = float(os.getenv("INR_CONVERSION_RATE", "83.5"))
 # CORS — comma-separated list of allowed frontend origins
 # ---------------------------------------------------------------------------
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
-
-# ---------------------------------------------------------------------------
-# Authentication
-# ---------------------------------------------------------------------------
-# Current mode: a single shared login password/PIN (AUTH_PASSWORD). The token
-# layer below is identity-agnostic, so switching to per-user accounts later
-# only means changing how credentials are verified (see core/security.py).
-# The insecure fallback signing key. It is also the default below, so the
-# startup guard can treat "still the default" the same as "unset".
-INSECURE_SECRET_DEFAULT = "dev-insecure-change-me"
-
-AUTH_PASSWORD = os.getenv("AUTH_PASSWORD", "")            # shared login secret
-AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", INSECURE_SECRET_DEFAULT)
-AUTH_ALGORITHM = "HS256"
-AUTH_TOKEN_EXPIRE_MINUTES = int(os.getenv("AUTH_TOKEN_EXPIRE_MINUTES", "720"))  # 12h
-
-# ---------------------------------------------------------------------------
-# Login rate limiting (brute-force throttle — see core/rate_limit.py)
-# ---------------------------------------------------------------------------
-# After LOGIN_MAX_ATTEMPTS failures from one client IP within
-# LOGIN_WINDOW_SECONDS, that IP is blocked for LOGIN_BLOCK_SECONDS.
-LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
-LOGIN_WINDOW_SECONDS = int(os.getenv("LOGIN_WINDOW_SECONDS", "300"))   # 5 min
-LOGIN_BLOCK_SECONDS = int(os.getenv("LOGIN_BLOCK_SECONDS", "300"))     # 5 min

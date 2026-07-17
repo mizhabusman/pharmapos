@@ -53,20 +53,16 @@ npm run lint
 
 ## Authentication
 
-Isolated in `app/core/security.py` (token + credential logic),
-`app/routers/auth.py` (login + `/auth/me`), and `app/schemas/auth.py`.
-Current mode is a single shared password (`AUTH_PASSWORD`). Routes are
-protected by wiring `Depends(get_current_user)` at `include_router` time in
-`main.py`, so router files carry no auth code. To add per-user logins, change
-only `verify_credentials()` — the token flow and guards are unchanged.
-Frontend auth lives in `frontend/src/auth.js` + `Login.jsx`; `App.jsx` gates
-on a token and uses `authFetch`.
+None. The first release is unauthenticated — all API routes are public and
+the frontend loads straight to the POS. Login/token/rate-limit/secret-guard
+code was removed (Phase 2 feature). Re-introducing auth means re-adding a
+security module + route guards in `main.py` and a token layer in the frontend.
 
 ## Known gaps (prototype → production)
 
-No DB migration tooling; SQLite is single-instance; `google.generativeai` is
-deprecated (migrate to `google-genai`).
+No authentication (public API); no DB migration tooling; SQLite is
+single-instance; `google.generativeai` is deprecated (migrate to `google-genai`).
 
 Done: professional package layout; server-side pricing in `confirm-sale`
-(checkout.py); shared-password auth; neat error handling + logging; pytest
-suite (28 tests) covering billing, search, checkout, API, and auth.
+(checkout.py); partial/prefix fuzzy search; neat error handling + logging;
+pytest suite covering billing, search, checkout, and API.
