@@ -29,3 +29,16 @@ def test_gibberish_below_threshold_returns_nothing():
     # A string unrelated to any brand should not falsely match.
     results = search_medicine("zzzzzzq", _inventory())
     assert results == []
+
+
+def test_partial_prefix_surfaces_medicine():
+    # Typing a partial brand prefix should already surface the medicine
+    # (e.g. "panto" -> "Pantop"), not require the full name.
+    results = search_medicine("panto", _inventory())
+    assert results and "pantop" in results[0][0].lower()
+
+
+def test_substring_fragment_matches():
+    # A fragment inside the name should match too (e.g. "cin" in "Crocin").
+    results = search_medicine("cin", _inventory())
+    assert any("crocin" in r[0].lower() for r in results)

@@ -135,6 +135,9 @@ def search_medicine(
         limit=safe_limit,
     ))
 
+    # Indices retrieved so far — shared across the remaining retrieval passes.
+    seen_indices = {idx for _, _, idx in initial_matches}
+
     # ── STAGE 1B: brand-name safety net — WRatio on brand token only ───────
     # Brand token = first meaningful (non-form-word, non-numeric) token.
     brand_tokens = [
@@ -142,7 +145,6 @@ def search_medicine(
         if not any(ch.isdigit() for ch in t)
     ]
     if brand_tokens:
-        seen_indices = {idx for _, _, idx in initial_matches}
         brand_query  = brand_tokens[0]
         for text, score, idx in process.extract(
             brand_query,
@@ -153,6 +155,20 @@ def search_medicine(
             if idx not in seen_indices:
                 initial_matches.append((text, score, idx))
                 seen_indices.add(idx)
+
+    # ── STAGE 1C: literal substring retrieval ──────────────────────────────
+    # Guarantees partial-name matches reach the reranker (e.g. "minima" ->
+    # "Minimalist ..."), which the fuzzy scorers can rank too low to retrieve
+    # for a short query against long candidate strings. Cheap plain-string
+    # scan; capped so a very common fragment can't blow up the rerank pool.
+    substring_added = 0
+    for idx, cand in enumerate(search_list):
+        if substring_added >= 60:
+            break
+        if idx not in seen_indices and query in cand:
+            initial_matches.append((cand, 100, idx))
+            seen_indices.add(idx)
+            substring_added += 1
 
     if not initial_matches:
         return []
@@ -179,7 +195,16 @@ def search_medicine(
         weighted_score = (token_score * 0.65) + (full_score * 0.35)
         combined_score = max(weighted_score, full_score)
 
-        reranked.append((candidate, combined_score, idx))
+        # Literal partial-name match is a strong, human-intuitive signal the
+        # blended fuzzy score under-weights for a short query against a long
+        # candidate (e.g. "minima" inside "minimalist ... serum"). A word that
+        # *starts* with the query is stronger still (prefix typing).
+        if any(word.startswith(query) for word in candidate.split()):
+            combined_score = max(combined_score, 96.0)
+        elif query in candidate:
+            combined_score = max(combined_score, 88.0)
+
+        reranked.append((candidate, min(combined_score, 100.0), idx))
 
     reranked.sort(key=lambda m: m[1], reverse=True)
 
