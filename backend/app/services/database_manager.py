@@ -8,6 +8,23 @@ from app.core.config import DB_PATH
 
 logger = logging.getLogger(__name__)
 
+
+def _to_int(value, default: int = 0) -> int:
+    """Tolerant int: handles the CSV's fractional/text stock (e.g. '4.8033')
+    instead of raising and making a real in-stock item look 'not found'."""
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _to_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def fetch_raw_inventory() -> pd.DataFrame:
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -33,12 +50,12 @@ def get_medicine_by_item_code(item_code: int) -> dict:
                 data = dict(row)
                 # Map names AND strictly enforce types before returning to the app
                 return {
-                    "item_code": int(data.get("item_code", 0)),
+                    "item_code": _to_int(data.get("item_code", 0)),
                     "product_name": str(data.get("item_name", "")).strip(),
                     "pack_name": str(data.get("pack_name", "")).strip(),
-                    "pack_size": int(data.get("units_pack", 1)),
-                    "price_inr": float(data.get("mrp", 0.0)),
-                    "stock": int(data.get("stock", 0))
+                    "pack_size": max(1, _to_int(data.get("units_pack", 1), 1)),
+                    "price_inr": max(0.0, _to_float(data.get("mrp", 0.0), 0.0)),
+                    "stock": max(0, _to_int(data.get("stock", 0), 0)),
                 }
                 
     except Exception as e:
@@ -89,11 +106,9 @@ def validate_stock(billing_items: List[Dict]) -> List[Dict]:
                     })
                     continue
 
-                # STRICT TYPE ENFORCEMENT: Convert string "13" from db to integer 13
-                try:
-                    current_stock = int(row["stock"])
-                except (ValueError, TypeError):
-                    current_stock = 0
+                # Tolerant coercion — a fractional/text stock ('4.8033') floors
+                # to a whole sellable pack count instead of reading as 0.
+                current_stock = _to_int(row["stock"], 0)
 
                 # Now we are safely comparing int < int
                 if current_stock < packs_needed:
@@ -134,10 +149,7 @@ def get_stock_for_item_codes(item_codes: List[int]) -> Dict[int, int]:
                 list(item_codes),
             )
             for row in cursor.fetchall():
-                try:
-                    stock_map[int(row["item_code"])] = int(row["stock"])
-                except (ValueError, TypeError):
-                    stock_map[int(row["item_code"])] = 0
+                stock_map[_to_int(row["item_code"])] = max(0, _to_int(row["stock"], 0))
     except Exception as e:
         logger.error("Stock lookup failed: %s", e)
 
@@ -160,6 +172,10 @@ def commit_sale(billing_items: List[Dict], bill_payload: dict) -> dict:
     Returns ``{"success": True, "bill_id": int}`` on success, or
     ``{"success": False, "message": str}`` on any failure (nothing persisted).
     """
+    # Never persist a header-only bill with no line items.
+    if not billing_items:
+        return {"success": False, "message": "No items to bill"}
+
     try:
         with sqlite3.connect(DB_PATH) as conn:
             # Enforce the bill_items -> bills foreign key for this transaction.

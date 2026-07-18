@@ -23,9 +23,13 @@ sys.path.insert(0, BACKEND_DIR)
 # (and what database_manager / preprocessor read).
 SEED_INVENTORY = [
     # item_code, item_name,            units_pack, pack_name, mrp,    stock
-    (1001, "Pantop Tab 40mg",   15, "15s", 150.00, 3),
-    (1002, "Aciloc Tab 150mg",  10, "10s",  68.50, 0),   # out of stock
-    (1003, "Crocin Tab 500mg",  10, "10s",  30.00, 5),
+    # Stock is stored as TEXT (matching the real generated DB), including a
+    # fractional value, so tests exercise the tolerant coercion.
+    (1001, "Pantop Tab 40mg",   15, "15s", 150.00, "3"),
+    (1002, "Aciloc Tab 150mg",  10, "10s",  68.50, "0"),    # out of stock
+    (1003, "Crocin Tab 500mg",  10, "10s",  30.00, "5"),
+    (1004, "Freebie Tab",       10, "10s",   0.00, "9"),    # MRP 0 -> unsellable
+    (1005, "Fractional Tab",    10, "10s",  50.00, "4.8"),  # fractional -> 4 packs
 ]
 
 

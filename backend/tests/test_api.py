@@ -45,6 +45,30 @@ def test_search_rejects_overlong_query(client):
     assert r.status_code == 422
 
 
+def test_fractional_stock_item_is_sellable(client):
+    # item 1005 has TEXT stock '4.8' — must read as 4 packs, not 404/out-of-stock.
+    r = client.get("/billing", params={"item_code": 1005, "rx_qty": 10})
+    assert r.status_code == 200
+    assert r.json()["medicine"]["stock"] == 4
+    # and it can actually be sold within that stock
+    payload = {
+        "patient_name": "Frac", "age": 30, "grand_total": 0,
+        "billing_items": [{"item_code": 1005, "packs_needed": 3, "billed_qty": 30, "line_total": 150}],
+    }
+    assert client.post("/confirm-sale", json=payload).json()["success"] is True
+
+
+def test_zero_price_item_is_rejected(client):
+    # item 1004 has MRP 0 — must not sell for free.
+    payload = {
+        "patient_name": "Free", "age": 30, "grand_total": 0,
+        "billing_items": [{"item_code": 1004, "packs_needed": 1, "billed_qty": 10, "line_total": 0}],
+    }
+    body = client.post("/confirm-sale", json=payload).json()
+    assert body["success"] is False
+    assert body["error"] == "Invalid items"
+
+
 def test_search_results_include_live_stock(client):
     r = client.get("/search", params={"query": "Pantop"})
     assert r.status_code == 200

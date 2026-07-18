@@ -55,6 +55,12 @@ def build_authoritative_bill(
         pack_size = medicine["pack_size"]
         pack_price = medicine["price_inr"]
 
+        # Refuse items with no/invalid price (a few CSV rows have MRP 0) — they
+        # would otherwise sell for ₹0. Reject loudly so the operator removes them.
+        if pack_price <= 0:
+            errors.append({"item_code": item_code, "error": "Item has no price and cannot be sold"})
+            continue
+
         billed_qty = packs_needed * pack_size
         line_total = round(packs_needed * pack_price, 2)
         grand_total += line_total
