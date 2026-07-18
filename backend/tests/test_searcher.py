@@ -42,3 +42,12 @@ def test_substring_fragment_matches():
     # A fragment inside the name should match too (e.g. "cin" in "Crocin").
     results = search_medicine("cin", _inventory())
     assert any("crocin" in r[0].lower() for r in results)
+
+
+def test_single_typo_still_matches():
+    # A one-character misspelling of the brand should still find the medicine
+    # (Jaro-Winkler brand-token matching), not return nothing.
+    inv = _inventory()
+    assert search_medicine("crocine", inv)[0][0].lower().startswith("crocin")   # extra letter
+    assert any("pantop" in r[0].lower() for r in search_medicine("pantpo", inv))  # transposition
+    assert any("aciloc" in r[0].lower() for r in search_medicine("acilok", inv))  # substitution
