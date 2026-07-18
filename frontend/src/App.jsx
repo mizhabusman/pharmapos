@@ -194,6 +194,7 @@ export default function App() {
   const [patientGender, setPatientGender] = useState('')
   const [saleResult, setSaleResult] = useState(null)
   const [billSnapshot, setBillSnapshot] = useState(null)   // frozen receipt after a sale
+  const [confirming, setConfirming] = useState(false)      // sale request in-flight guard
   const [sessionTokens, setSessionTokens] = useState(0)
   const [sessionCost, setSessionCost] = useState(0.0)
   const [lastScanMetrics, setLastScanMetrics] = useState(null)
@@ -205,6 +206,7 @@ export default function App() {
   const fileInputRef = useRef(null)
   const rowsScrollRef = useRef(null)
   const prevRowCount = useRef(1) // matches the initial single-phantom cart
+  const confirmingRef = useRef(false) // synchronous in-flight guard (state is async)
 
   // When committing a medicine spawns the next phantom row below the fold,
   // scroll it into view. Only fires when exactly ONE row was appended — a
@@ -251,12 +253,27 @@ export default function App() {
     return () => clearInterval(interval)
   }, [loading])
 
+  // After a completed sale, the next Rx is a NEW bill — clear the sold rows +
+  // patient so they can't be carried over and re-billed. (Does NOT touch the
+  // image, which is the source of the new scan, nor session token totals.)
+  function clearBillForNewSale() {
+    setCart([createEmptyRow()])
+    setPatientName('')
+    setPatientAge('')
+    setPatientGender('')
+    setBillSnapshot(null)
+    setLastScanMetrics(null)
+  }
+
   function handleImageUpload(e) {
     const file = e.target.files[0]
     if (!file) return
+    // If the previous sale is done, uploading a new prescription starts a fresh
+    // bill rather than resurrecting the sold rows.
+    if (saleResult?.success) clearBillForNewSale()
     setImageFile(file)
     setImage(URL.createObjectURL(file))
-    // Deliberately leave the cart alone — anything entered manually before
+    // Otherwise leave the cart alone — anything entered manually before
     // scanning must survive (extraction merges rather than replaces).
     setSaleResult(null)
     setErrorMsg(null)
@@ -286,6 +303,7 @@ export default function App() {
   async function getBilling(item_code, rx_qty) {
     try {
       const res = await fetch(`${API}/billing?item_code=${item_code}&rx_qty=${rx_qty}`)
+      if (!res.ok) return null   // 404 (item gone) / 422 — not a billing payload
       const data = await res.json()
       return data
     } catch (err) {
@@ -297,8 +315,16 @@ export default function App() {
   async function fetchBillingWithCap(itemCode, qty) {
     const billing = await getBilling(itemCode, qty)
 
+    // Billing couldn't be fetched (item no longer in inventory, or a server
+    // error). Surface it with a clear warning instead of silently dropping the
+    // row from the bill with no explanation.
     if (!billing?.medicine || !billing?.billing) {
-      return { billing, rx_qty: qty, stockWarning: null, isUnavailable: false }
+      return {
+        billing: null,
+        rx_qty: qty,
+        stockWarning: 'Item unavailable in inventory — please remove this row',
+        isUnavailable: false
+      }
     }
 
     const stock = billing.medicine.stock
@@ -339,6 +365,9 @@ export default function App() {
   // Patient name/age/gender are fill-if-empty in both modes (earliest wins).
   async function handleExtract(mode = 'replace') {
     if (!imageFile) return
+    // A scan after a completed sale starts a NEW bill (in case the user hit
+    // Re-scan / Different Rx without re-uploading) — never merge into sold rows.
+    if (saleResult?.success) clearBillForNewSale()
     setLoading(true)
     setLoadingMsgIndex(0)
     setSaleResult(null)
@@ -528,8 +557,10 @@ export default function App() {
     }
 
     const matches = await searchMedicine(query)
+    // Apply only if this is still the current query for the row — drops a
+    // slower, out-of-order response for a query the user has already changed.
     setCart(prev => prev.map((it, idx) =>
-      idx === i ? { ...it, matches, showDropdown: true } : it
+      (idx === i && it.manualQuery === query) ? { ...it, matches, showDropdown: true } : it
     ))
   }
 
@@ -580,7 +611,7 @@ export default function App() {
 
     const stockState = await fetchBillingWithCap(match.item_code, qty)
     setCart(prev => prev.map((it, idx) =>
-      idx === i ? {
+      (idx === i && it.selectedItemCode === match.item_code) ? {
         ...it,
         billing: stockState.billing,
         rx_qty: stockState.rx_qty,
@@ -612,13 +643,15 @@ export default function App() {
     const match = item.matches[newIndex]
     const qty = item.rx_qty || 1
 
+    // Clear billing immediately so the row can't be confirmed with the PREVIOUS
+    // medicine's figures during the async window before the new billing lands.
     setCart(prev => prev.map((it, idx) =>
-      idx === i ? { ...it, selectedIndex: newIndex, selectedItemCode: match.item_code } : it
+      idx === i ? { ...it, selectedIndex: newIndex, selectedItemCode: match.item_code, billing: null } : it
     ))
 
     const stockState = await fetchBillingWithCap(match.item_code, qty)
     setCart(prev => prev.map((it, idx) =>
-      idx === i ? {
+      (idx === i && it.selectedItemCode === match.item_code) ? {
         ...it,
         billing: stockState.billing,
         rx_qty: stockState.rx_qty,
@@ -631,15 +664,19 @@ export default function App() {
   async function updateQty(i, value) {
     const newQty = value === '' ? '' : parseInt(value)
 
+    // Drop the old billing immediately: while the new qty's billing loads (or if
+    // qty is cleared / 0), the line must not stay billed at the previous amount.
     setCart(prev => withPhantomRow(prev.map((it, idx) =>
-      idx === i ? { ...it, rx_qty: newQty } : it
+      idx === i ? { ...it, rx_qty: newQty, billing: null } : it
     )))
 
     const item = cart[i]
     if (newQty > 0 && item.selectedItemCode) {
       const stockState = await fetchBillingWithCap(item.selectedItemCode, newQty)
+      // Guard: only write back if this row still holds the medicine we fetched
+      // for (a mid-flight delete/change could shift index i to another row).
       setCart(prev => prev.map((it, idx) =>
-        idx === i ? {
+        (idx === i && it.selectedItemCode === item.selectedItemCode) ? {
           ...it,
           billing: stockState.billing,
           rx_qty: stockState.rx_qty,
@@ -658,6 +695,7 @@ export default function App() {
     setCart([createEmptyRow()])
     setSaleResult(null)
     setBillSnapshot(null)
+    if (image) URL.revokeObjectURL(image)   // don't leak the object URL
     setImage(null)
     setImageFile(null)
     setPatientName('')
@@ -704,6 +742,14 @@ export default function App() {
   const hasExtractedRows = cart.some(row => !row.isManual)
 
   async function handleConfirmSale() {
+    // In-flight guard — a double-click (or a slow network) must not fire two
+    // /confirm-sale requests, which would create two bills and deduct stock
+    // twice. Use a ref, not state: React state updates async, so rapid
+    // synchronous clicks would all still see confirming === false.
+    if (confirmingRef.current) return
+    confirmingRef.current = true
+    setConfirming(true)   // drives the button's disabled/"Processing…" UI
+
     // Capture the rows being sold ONCE, pairing each with its reconciled stock
     // line, so the request payload and the printable receipt bill exactly the
     // effective (shared-stock) quantities — never the raw per-row request.
@@ -750,6 +796,9 @@ export default function App() {
     } catch (err) {
       console.error("Sale failed", err)
       setErrorMsg('Network error — the sale could not be completed. Please try again.')
+    } finally {
+      confirmingRef.current = false
+      setConfirming(false)
     }
   }
 
@@ -1118,19 +1167,27 @@ export default function App() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h2 className="text-lg font-bold text-slate-800">Transaction Failed: Insufficient Stock</h2>
+                <h2 className="text-lg font-bold text-slate-800">
+                  {saleResult.error === 'Insufficient stock'
+                    ? 'Transaction Failed: Insufficient Stock'
+                    : `Transaction Failed: ${saleResult.error || 'Please try again'}`}
+                </h2>
               </div>
-              <div className="space-y-2 mb-5 pl-12">
-                {saleResult.details?.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    <span className="font-bold text-slate-700">{item.product_name}</span>
-                    <span className="text-slate-400">—</span>
-                    <span className="text-rose-600 font-medium">
-                      Need {item.required} <span className="text-rose-400">/</span> Have {item.available}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {saleResult.details?.length > 0 && (
+                <div className="space-y-2 mb-5 pl-12">
+                  {saleResult.details.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <span className="font-bold text-slate-700">{item.product_name || `Item ${item.item_code}`}</span>
+                      <span className="text-slate-400">—</span>
+                      <span className="text-rose-600 font-medium">
+                        {item.required != null && item.available != null
+                          ? <>Need {item.required} <span className="text-rose-400">/</span> Have {item.available}</>
+                          : (item.error || 'cannot be sold')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={() => setSaleResult(null)}
                 className="ml-12 bg-white border border-slate-200 text-slate-600 px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors"
@@ -1474,10 +1531,10 @@ export default function App() {
                   </button>
                   <button
                     onClick={handleConfirmSale}
-                    disabled={!hasBillableItems}
+                    disabled={!hasBillableItems || confirming || loading}
                     className="font-black text-base px-10 py-4 rounded-xl btn-green text-white hover:-translate-y-0.5 disabled:cursor-not-allowed flex items-center gap-3 tracking-wide"
                   >
-                    Confirm Sale
+                    {confirming ? 'Processing…' : 'Confirm Sale'}
                     <span className="w-1.5 h-1.5 bg-white/40 rounded-full"></span>
                     ₹{grandTotal.toFixed(2)}
                   </button>
