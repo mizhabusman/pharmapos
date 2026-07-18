@@ -1,6 +1,3 @@
-import math
-
-
 def calculate_pack_billing(
     rx_qty,
     pack_size,
@@ -52,9 +49,9 @@ def calculate_pack_billing(
     # PACK CALCULATION
     # ==========================================
 
-    packs_needed = math.ceil(
-        rx_qty / pack_size
-    )
+    # Integer ceiling division — avoids the float conversion that overflows
+    # (OverflowError) for very large rx_qty.
+    packs_needed = -(-rx_qty // pack_size)
 
     billed_qty = (
         packs_needed * pack_size

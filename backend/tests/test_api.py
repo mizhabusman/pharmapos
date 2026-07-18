@@ -29,6 +29,22 @@ def test_billing_unknown_item_returns_404(client):
     assert r.json()["detail"]["item_code"] == 999999
 
 
+def test_billing_rejects_zero_or_negative_qty(client):
+    assert client.get("/billing", params={"item_code": 1001, "rx_qty": 0}).status_code == 422
+    assert client.get("/billing", params={"item_code": 1001, "rx_qty": -5}).status_code == 422
+
+
+def test_billing_rejects_absurd_qty_instead_of_500(client):
+    # Previously a ~309+ digit rx_qty caused an OverflowError 500.
+    r = client.get("/billing", params={"item_code": 1001, "rx_qty": "1" + "0" * 400})
+    assert r.status_code == 422
+
+
+def test_search_rejects_overlong_query(client):
+    r = client.get("/search", params={"query": "a" * 500})
+    assert r.status_code == 422
+
+
 def test_search_results_include_live_stock(client):
     r = client.get("/search", params={"query": "Pantop"})
     assert r.status_code == 200

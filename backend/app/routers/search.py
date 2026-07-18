@@ -5,7 +5,7 @@ The search index is built once at startup and shared via ``app.state.inventory``
 (see app/main.py).
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from app.services.database_manager import get_stock_for_item_codes
 from app.services.searcher import search_medicine
@@ -14,7 +14,7 @@ router = APIRouter(tags=["search"])
 
 
 @router.get("/search")
-def search(query: str, request: Request):
+def search(request: Request, query: str = Query(max_length=120)):
     inventory = request.app.state.inventory
     results = search_medicine(query, inventory)
 
