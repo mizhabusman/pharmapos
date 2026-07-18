@@ -39,8 +39,23 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_INPUT_PRICE_PER_1M = float(os.getenv("GEMINI_INPUT_PRICE_PER_1M", "0.075"))
 GEMINI_OUTPUT_PRICE_PER_1M = float(os.getenv("GEMINI_OUTPUT_PRICE_PER_1M", "0.30"))
 INR_CONVERSION_RATE = float(os.getenv("INR_CONVERSION_RATE", "83.5"))
+# A hung Gemini call must not pin a worker indefinitely.
+GEMINI_TIMEOUT_SECONDS = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
+
+# ---------------------------------------------------------------------------
+# Request limits
+# ---------------------------------------------------------------------------
+# Max request body size (bytes). Rejects oversized uploads / payloads before
+# they can exhaust memory or disk (enforced in middleware + the extract route).
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))  # 20 MB
 
 # ---------------------------------------------------------------------------
 # CORS — comma-separated list of allowed frontend origins
 # ---------------------------------------------------------------------------
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+# strip()/filter so "a.com, b.com" (space after comma) or a trailing comma
+# don't produce origins that never match the browser's Origin header.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
+    if o.strip()
+]

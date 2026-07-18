@@ -7,10 +7,11 @@ Run from the ``backend/`` directory:
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.core.config import CORS_ORIGINS, DB_PATH
+from app.core.config import CORS_ORIGINS, DB_PATH, MAX_UPLOAD_BYTES
 from app.routers import billing, extraction, health, sales, search
 from app.services.preprocessor import create_search_index, load_inventory
 
@@ -30,6 +31,24 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Reject oversized request bodies up front (before multipart spooling / JSON
+    # parsing), so a huge upload can't exhaust memory or disk on the server.
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                if int(content_length) > MAX_UPLOAD_BYTES:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": {
+                            "message": f"Request too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)} MB)."
+                        }},
+                    )
+            except ValueError:
+                pass
+        return await call_next(request)
 
     # Build the in-memory fuzzy-search index once at startup and share it
     # across requests via app.state (see routers/search.py).
