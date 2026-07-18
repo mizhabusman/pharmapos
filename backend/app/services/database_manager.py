@@ -202,11 +202,12 @@ def commit_sale(billing_items: List[Dict], bill_payload: dict) -> dict:
 
             # --- 2) Insert the bill header ---
             cursor.execute("""
-                INSERT INTO bills (patient_name, age, grand_total, timestamp)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO bills (patient_name, age, gender, grand_total, timestamp)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
             """, (
                 bill_payload.get("patient_name", "Unknown"),
                 bill_payload.get("age", 0),
+                bill_payload.get("gender", "Unknown"),
                 bill_payload.get("grand_total", 0.0),
             ))
             bill_id = cursor.lastrowid  # unique id the DB assigned this bill
@@ -256,11 +257,18 @@ def initialize_database():
                     bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     patient_name TEXT DEFAULT 'Unknown',
                     age INTEGER DEFAULT 0,
+                    gender TEXT DEFAULT 'Unknown',
                     grand_total REAL DEFAULT 0.0,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            
+
+            # Migration: add gender to a bills table created before this column
+            # existed (CREATE IF NOT EXISTS won't alter an existing table).
+            existing_cols = [r[1] for r in cursor.execute("PRAGMA table_info(bills)").fetchall()]
+            if "gender" not in existing_cols:
+                cursor.execute("ALTER TABLE bills ADD COLUMN gender TEXT DEFAULT 'Unknown'")
+
             # Create Ledger Line Items Table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS bill_items (

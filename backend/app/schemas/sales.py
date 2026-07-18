@@ -17,5 +17,6 @@ class BillingItem(BaseModel):
 class SaleRequest(BaseModel):
     patient_name: str = "Unknown"
     age: int = 0
+    gender: str = "Unknown"
     grand_total: float
     billing_items: List[BillingItem]

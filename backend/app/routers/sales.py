@@ -36,6 +36,7 @@ def confirm_sale(sale: SaleRequest):
     bill_payload = {
         "patient_name": sale.patient_name,
         "age": sale.age,
+        "gender": sale.gender,
         "grand_total": grand_total,
         "billing_items": billing_items,
     }

@@ -58,6 +58,19 @@ def test_fractional_stock_item_is_sellable(client):
     assert client.post("/confirm-sale", json=payload).json()["success"] is True
 
 
+def test_confirm_sale_persists_gender(client, db_conn):
+    payload = {
+        "patient_name": "Nisha", "age": 34, "gender": "Female", "grand_total": 0,
+        "billing_items": [{"item_code": 1001, "packs_needed": 1, "billed_qty": 15, "line_total": 150}],
+    }
+    body = client.post("/confirm-sale", json=payload).json()
+    assert body["success"] is True
+    saved = db_conn.execute(
+        "SELECT gender FROM bills WHERE bill_id = ?", (body["bill_id"],)
+    ).fetchone()
+    assert saved["gender"] == "Female"
+
+
 def test_zero_price_item_is_rejected(client):
     # item 1004 has MRP 0 — must not sell for free.
     payload = {

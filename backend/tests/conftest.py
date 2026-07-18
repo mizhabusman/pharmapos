@@ -45,6 +45,7 @@ def _seed_database(db_path: str) -> None:
                 bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 patient_name TEXT DEFAULT 'Unknown',
                 age INTEGER DEFAULT 0,
+                gender TEXT DEFAULT 'Unknown',
                 grand_total REAL DEFAULT 0.0,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )

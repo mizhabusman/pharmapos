@@ -58,6 +58,7 @@ def rebuild_database():
                 bill_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 patient_name TEXT DEFAULT 'Unknown',
                 age INTEGER DEFAULT 0,
+                gender TEXT DEFAULT 'Unknown',
                 grand_total REAL DEFAULT 0.0,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
