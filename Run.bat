@@ -30,8 +30,11 @@ if not exist "%ROOT%frontend\node_modules" (
   popd
 )
 
-REM --- First run: build the inventory database from the CSV ---
-if not exist "%ROOT%data\pharmacy_inventory.db" (
+REM --- Build the inventory DB if the 'inventory' table isn't present ---
+REM (checks the TABLE, not just the file, so a bills-only DB left behind by an
+REM  early server start can't cause the build to be skipped -> empty store.)
+"%VENV_PY%" -c "import sqlite3; sqlite3.connect(r'%ROOT%data\pharmacy_inventory.db').execute('SELECT 1 FROM inventory LIMIT 1')" 2>nul
+if errorlevel 1 (
   echo [SETUP] Building inventory database from CSV...
   pushd "%ROOT%backend"
   "%VENV_PY%" scripts\db_setup.py
@@ -42,9 +45,9 @@ REM --- Start the backend (FastAPI on http://localhost:8000) ---
 echo [START] Backend  -^> http://localhost:8000
 start "Pharmacy Backend" /D "%ROOT%backend" cmd /k ..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 
-REM --- Start the frontend (Vite dev server on http://localhost:5173) ---
+REM --- Start the frontend (Vite dev server, pinned to :5173) ---
 echo [START] Frontend -^> http://localhost:5173
-start "Pharmacy Frontend" /D "%ROOT%frontend" cmd /k npm run dev
+start "Pharmacy Frontend" /D "%ROOT%frontend" cmd /k npm run dev -- --port 5173 --strictPort
 
 REM --- Give the servers a few seconds, then open the browser ---
 echo [WAIT]  Giving the servers a moment to start up...

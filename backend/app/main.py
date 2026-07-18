@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import CORS_ORIGINS, DB_PATH, MAX_UPLOAD_BYTES
 from app.routers import billing, extraction, health, sales, search
+from app.services.database_manager import initialize_database
 from app.services.preprocessor import create_search_index, load_inventory
 
 logging.basicConfig(
@@ -49,6 +50,10 @@ def create_app() -> FastAPI:
             except ValueError:
                 pass
         return await call_next(request)
+
+    # Ensure the ledger tables exist (runs here, not at import time, so tests
+    # and any pre-db_setup import don't create tables in the real DB).
+    initialize_database()
 
     # Build the in-memory fuzzy-search index once at startup and share it
     # across requests via app.state (see routers/search.py).

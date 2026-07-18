@@ -283,10 +283,3 @@ def initialize_database():
             """)
     except Exception as e:
         logger.error("CRITICAL: Failed to initialize database structure: %s", e)
-
-# ==========================================
-# AUTO-RUN ON STARTUP
-# ==========================================
-# By calling this at the bottom of the file, the manager automatically 
-# self-checks the database the exact second this file is imported by your app.
-initialize_database()

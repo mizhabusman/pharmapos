@@ -133,9 +133,17 @@ can be hosted separately.
 
 ### Frontend
 
-1. Point the build at the deployed API:
+1. Point the build at the deployed API by creating **`frontend/.env`** (a
+   plain UTF-8 file) with one line:
+   ```
+   VITE_API_URL=https://api.pharmapos.example.com
+   ```
+   > Create it in your editor, or `cp .env.example .env` and edit. Avoid
+   > `echo "..." > .env` on Windows PowerShell — it writes UTF-16, which Vite
+   > can't read, so the build silently falls back to `http://localhost:8000`.
+
+   Then build:
    ```bash
-   echo "VITE_API_URL=https://api.pharmapos.example.com" > .env
    npm ci
    npm run build            # outputs static files to frontend/dist/
    ```
